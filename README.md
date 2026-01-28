@@ -1,6 +1,7 @@
 **Tools:**
 [Edit](https://vanillahero.github.io/edit.html) |
 [imagAI](https://vanillahero.github.io/imagai.html) |
+[imagUP](https://vanillahero.github.io/imageup.html) |
 [imagED](https://vanillahero.github.io/imaged.html) |
 [VideoPlayer](https://vanillahero.github.io/videoplayer.html)
 
