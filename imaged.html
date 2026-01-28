@@ -1,0 +1,2111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Editor</title>
+<style>
+
+:root {
+  --bg-color: #1e1e1e;
+  --panel-color: #252526;
+  --text-color: #cccccc;
+  --border-color: #3e3e42;
+  --highlight-color: #007acc;
+  --highlight-hover: #0098ff;
+  --input-bg: #3c3c3c;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  font-size: 13px;
+  user-select: none;
+}
+
+.editor-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.toolbar {
+  width: 50px;
+  background-color: var(--panel-color);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 10px;
+  gap: 10px;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.main-area {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #111;
+  position: relative;
+  min-width: 0;
+}
+
+.top-bar {
+  background-color: var(--panel-color);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 8px 15px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.top-bar-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+}
+
+.divider {
+  width: 1px;
+  height: 18px;
+  background: #444;
+  margin: 0 5px;
+}
+
+.crop-ratio-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.zoom-controls .btn.secondary {
+  padding: 2px 8px;
+  font-size: 10px;
+}
+
+.right-panel {
+  width: 260px;
+  background-color: var(--panel-color);
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.tool-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--text-color);
+  transition: all 0.2s;
+  position: relative;
+}
+
+.tool-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.tool-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.tool-btn.active {
+  background-color: var(--highlight-color);
+  color: white;
+  border-color: var(--highlight-color);
+}
+
+.btn {
+  background-color: var(--highlight-color);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background-color: var(--highlight-hover);
+}
+
+.btn.secondary {
+  background-color: var(--input-bg);
+}
+
+.btn.secondary:hover {
+  background-color: #4c4c4c;
+}
+
+.canvas-wrapper {
+  flex-grow: 1;
+  overflow: auto;
+  display: block;
+  background-image:
+    linear-gradient(45deg, #2d2d2d 25%, transparent 25%),
+    linear-gradient(-45deg, #2d2d2d 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #2d2d2d 75%),
+    linear-gradient(-45deg, transparent 75%, #2d2d2d 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  position: relative;
+}
+
+#canvas-stage {
+  position: relative;
+  background: white;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  transform-origin: 0 0;
+  transition: transform 0.1s ease-out;
+  margin: 0;
+}
+
+#canvas-stage canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+#crop-overlay {
+  pointer-events: auto !important;
+  z-index: 9999;
+}
+
+.panel-header {
+  padding: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 11px;
+  border-bottom: 1px solid var(--border-color);
+  letter-spacing: 0.5px;
+}
+
+.layers-list {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 5px;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+
+.layer-item {
+  background-color: var(--input-bg);
+  padding: 8px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.layer-item.active {
+  border-color: var(--highlight-color);
+  background-color: #444;
+}
+
+.layer-vis-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #888;
+  margin-right: 8px;
+  padding: 2px;
+  display: flex;
+}
+
+.layer-vis-btn.visible {
+  color: var(--text-color);
+}
+
+.layer-name {
+  flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-controls {
+  padding: 10px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-color);
+  padding: 5px;
+  border-radius: 3px;
+}
+
+.icon-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.tool-options {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.option-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.option-group.hidden {
+  display: none;
+}
+
+.crop-ratio-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.crop-ratio-btn.active {
+  background-color: var(--highlight-color);
+  color: white;
+}
+
+input[type="range"] {
+  width: 80px;
+  accent-color: var(--highlight-color);
+}
+
+input[type="color"] {
+  width: 30px;
+  height: 30px;
+  border: none;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+
+input[type="number"] {
+  width: 50px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  color: white;
+  padding: 4px;
+}
+
+input[type="text"] {
+  width: 120px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  color: white;
+  padding: 5px;
+  border-radius: 2px;
+}
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--input-bg);
+  padding: 3px;
+  border-radius: 4px;
+}
+
+.zoom-label {
+  min-width: 45px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 10000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal {
+  background: var(--panel-color);
+  padding: 20px;
+  border-radius: 5px;
+  min-width: 300px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.modal h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.form-row {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-row.hidden {
+  display: none;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.sub-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+</style>
+  </head>
+  <body>
+    <div class="editor-container">
+      <div class="toolbar">
+        <button class="tool-btn active" id="tool-move" title="Move Tool">
+          Mv
+        </button>
+        <button class="tool-btn" id="tool-brush" title="Brush Tool">
+          Br
+        </button>
+        <button class="tool-btn" id="tool-eraser" title="Eraser Tool">
+          Er
+        </button>
+        <button class="tool-btn" id="tool-text" title="Text Tool">
+          Tx
+        </button>
+        <button class="tool-btn" id="tool-crop" title="Crop Tool">
+          Cr
+        </button>
+        <button class="tool-btn" id="tool-eyedropper" title="Eyedropper Tool">
+          Ed
+        </button>
+        <button class="tool-btn" id="tool-spotHeal" title="Spot Heal Tool (Alt/Cmd+Click to sample)">
+          Sh
+        </button>
+      </div>
+      <div class="main-area">
+        <div class="top-bar">
+          <div class="top-bar-row">
+            <label class="btn secondary">
+              Open <input type="file" id="file-input" accept="image/*" style="display:none">
+            </label>
+            <button class="btn secondary" id="btn-new">New</button>
+            <button class="btn secondary" id="btn-resize">Resize</button>
+            <button class="btn secondary" id="btn-filters">Filters</button>
+            <div class="divider"></div>
+            <button class="btn secondary" id="btn-save-project">Save Project</button>
+            <label class="btn secondary">
+              Open Project <input type="file" id="project-input" accept=".json" style="display:none">
+            </label>
+            <div class="divider"></div>
+            <button class="btn secondary" id="btn-undo" title="Undo (Ctrl+Z)" disabled>Undo</button>
+            <button class="btn secondary" id="btn-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
+            <div class="zoom-controls" style="margin-left: auto;">
+              <button class="icon-btn" id="zoom-out" title="Zoom Out">-</button>
+              <span class="zoom-label" id="zoom-val">100%</span>
+              <button class="icon-btn" id="zoom-in" title="Zoom In">+</button>
+              <button class="btn secondary" id="zoom-fit">Fit</button>
+              <button class="btn secondary" id="zoom-orig">Orig</button>
+            </div>
+            <button class="btn" id="btn-export">Export</button>
+          </div>
+          <div class="top-bar-row tool-options">
+            <div id="opt-brush" class="option-group hidden">
+              <label style="font-size:11px; color:#888;">Size:</label>
+              <input type="range" id="brush-size" min="1" max="100" value="20">
+              <div class="sub-option" id="brush-opacity-container">
+                <label style="font-size:11px; color:#888;">Opacity:</label>
+                <input type="range" id="brush-opacity" min="1" max="100" value="100">
+              </div>
+              <div class="sub-option" id="brush-color-container">
+                <label style="font-size:11px; color:#888;">Color:</label>
+                <input type="color" id="brush-color" value="#ffffff">
+              </div>
+            </div>
+            <div id="opt-text" class="option-group hidden">
+              <input type="text" id="text-content" value="Hello World" style="width:100px;">
+              <label style="font-size:11px; color:#888;">Size:</label>
+              <input type="number" id="text-size" min="1" max="200" value="40" style="width:45px;">
+              <label style="font-size:11px; color:#888;">Color:</label>
+              <input type="color" id="text-color" value="#ffffff">
+              <label style="font-size:11px; color:#888;">Font:</label>
+              <select id="text-font-family" style="background:var(--input-bg); color:var(--text-color); border:1px solid var(--border-color); padding:4px; border-radius:2px;">
+                <option value="Arial">Arial</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Helvetica">Helvetica</option>
+                <option value="Tahoma">Tahoma</option>
+                <option value="Trebuchet MS">Trebuchet MS</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Garamond">Garamond</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Brush Script MT">Brush Script MT</option>
+                <option value="sans-serif">Sans-Serif</option>
+                <option value="serif">Serif</option>
+                <option value="monospace">Monospace</option>
+                <option value="cursive">Cursive</option>
+                <option value="fantasy">Fantasy</option>
+              </select>
+              <div style="flex-direction: row; align-items: center;">
+                <input type="checkbox" id="text-shadow-enabled" style="width:auto; margin-right: 5px;">
+                <label for="text-shadow-enabled" style="margin-bottom:0;">Shadow</label>
+              </div>
+            </div>
+            <div id="opt-crop" class="option-group hidden">
+              <div class="crop-ratio-group">
+                <label style="font-size:11px; color:#888;">Ratio:</label>
+                <button class="btn secondary crop-ratio-btn active" data-ratio="free">Free</button>
+                <button class="btn secondary crop-ratio-btn" data-ratio="square">1:1</button>
+                <button class="btn secondary crop-ratio-btn" data-ratio="4:3">4:3</button>
+                <button class="btn secondary crop-ratio-btn" data-ratio="16:9">16:9</button>
+              </div>
+              <span id="crop-dimensions" style="font-size:11px; color:#888; white-space:nowrap;">Draw rect to crop</span>
+              <button class="btn" id="btn-apply-crop">Apply</button>
+              <button class="btn secondary" id="btn-cancel-crop">Cancel</button>
+            </div>
+            <div id="opt-filters" class="option-group hidden">
+              <label style="font-size:11px; color:#888;">Brightness:</label>
+              <input type="range" id="filter-light-slider" min="0" max="200" value="100">
+              <label style="font-size:11px; color:#888;">Contrast:</label>
+              <input type="range" id="filter-contrast-slider" min="0" max="200" value="100">
+              <label style="font-size:11px; color:#888;">Saturation:</label>
+              <input type="range" id="filter-saturation-slider" min="0" max="200" value="100">
+              <label style="font-size:11px; color:#888;">Blur:</label>
+              <input type="range" id="filter-blur-slider" min="0" max="20" value="0">
+              <label style="font-size:11px; color:#888;">Sepia:</label>
+              <input type="range" id="filter-sepia-slider" min="0" max="100" value="0">
+              <label style="font-size:11px; color:#888;">Invert:</label>
+              <input type="range" id="filter-invert-slider" min="0" max="100" value="0">
+              <label style="font-size:11px; color:#888;">Hue:</label>
+              <input type="range" id="filter-hue-slider" min="0" max="360" value="0">
+              <button class="btn secondary" id="btn-reset-filters" style="margin-left: 5px; padding: 4px 8px;">Reset</button>
+            </div>
+          </div>
+        </div>
+        <div class="canvas-wrapper" id="canvas-wrapper">
+          <div id="canvas-stage">
+            <canvas id="crop-overlay"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="right-panel">
+        <p style="text-align: center; margin: 10px 0 6px 0; color: #606060;">&copy; Johnny Heggelund</p>
+        <div class="panel-header">Layer Properties</div>
+        <div style="padding:10px;">
+          <label style="display:block; margin-bottom:5px;">Opacity</label>
+          <input type="range" id="layer-opacity" min="0" max="100" value="100" style="width:100%">
+          <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border-color)">
+            <button class="btn secondary" id="btn-scale-layer" style="width:100%">Scale Layer</button>
+          </div>
+        </div>
+        <div class="panel-header" style="border-top:1px solid var(--border-color)">Layers</div>
+        <div class="layers-list" id="layers-list">
+        </div>
+        <div class="layer-controls">
+          <button class="icon-btn" id="btn-add-layer" title="New Layer">
+            <svg viewBox="0 0 24 24">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+            </svg>
+          </button>
+          <button class="icon-btn" id="btn-duplicate-layer" title="Duplicate Layer">
+            <svg viewBox="0 0 24 24">
+              <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
+            </svg>
+          </button>
+          <button class="icon-btn" id="btn-layer-up" title="Move Up">
+            <svg viewBox="0 0 24 24">
+              <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" />
+            </svg>
+          </button>
+          <button class="icon-btn" id="btn-layer-down" title="Move Down">
+            <svg viewBox="0 0 24 24">
+              <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
+            </svg>
+          </button>
+          <button class="icon-btn" id="btn-delete-layer" title="Delete Layer">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="dim-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h3 id="modal-title">New Image</h3>
+        <div id="dims-group">
+          <div class="form-row">
+            <label>Width (px)</label>
+            <input type="number" id="inp-width" value="800">
+          </div>
+          <div class="form-row">
+            <label>Height (px)</label>
+            <input type="number" id="inp-height" value="600">
+          </div>
+          <div class="form-row" style="flex-direction: row; align-items: center;">
+            <input type="checkbox" id="keep-aspect-ratio" checked style="width:auto; margin-right: 5px;">
+            <label for="keep-aspect-ratio" style="margin-bottom:0;">Keep Aspect Ratio</label>
+          </div>
+        </div>
+        <div id="scale-group" class="hidden">
+          <div class="form-row">
+            <label>Scale Percentage (%)</label>
+            <input type="number" id="inp-scale" value="100">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn secondary" id="btn-modal-cancel">Cancel</button>
+          <button class="btn" id="btn-modal-confirm">OK</button>
+        </div>
+      </div>
+    </div>
+<script>
+
+const state = {
+  width: 800,
+  height: 600,
+  zoom: 1.0,
+  layers: [],
+  activeLayerId: null,
+  nextLayerId: 1,
+  tool: 'move',
+  brush: {
+    size: 20,
+    color: '#ffffff',
+    opacity: 100
+  },
+  text: {
+    content: 'Hello World',
+    size: 40,
+    color: '#ffffff',
+    fontFamily: 'sans-serif',
+    shadowEnabled: false
+  },
+  isDrawing: false,
+  lastPos: {
+    x: 0,
+    y: 0
+  },
+  moveStart: {
+    x: 0,
+    y: 0,
+    layerX: 0,
+    layerY: 0
+  },
+  crop: {
+    active: false,
+    rect: null,
+    isDragging: false,
+    isResizing: false,
+    isMoving: false,
+    activeHandle: null,
+    aspectRatio: 'free',
+    initialMouseX: 0,
+    initialMouseY: 0,
+    initialRect: null
+  },
+  spotHeal: {
+    samplePoint: null,
+    isCloning: false,
+    cloneOffset: {
+      x: 0,
+      y: 0
+    },
+    sourceCanvas: null
+  },
+  resize: {
+    keepAspectRatio: true,
+    originalAspectRatio: 1
+  },
+  undoStack: [],
+  redoStack: [],
+  maxHistory: 20,
+  isUndoingRedoing: false
+};
+
+const stage = document.getElementById('canvas-stage');
+const wrapper = document.getElementById('canvas-wrapper');
+const cropOverlay = document.getElementById('crop-overlay');
+const cropCtx = cropOverlay.getContext('2d');
+const layersList = document.getElementById('layers-list');
+const cropDimensionsSpan = document.getElementById('crop-dimensions');
+const projectInput = document.getElementById('project-input');
+const keepAspectRatioCheckbox = document.getElementById('keep-aspect-ratio');
+const inpWidth = document.getElementById('inp-width');
+const inpHeight = document.getElementById('inp-height');
+const cropRatioButtons = document.querySelectorAll('.crop-ratio-btn');
+const HANDLE_SIZE = 24;
+const tools = ['move', 'brush', 'eraser', 'text', 'crop', 'eyedropper', 'spotHeal', 'filters'];
+const modal = document.getElementById('dim-modal');
+const dimsGroup = document.getElementById('dims-group');
+const scaleGroup = document.getElementById('scale-group');
+let modalAction = null;
+
+function init(w = 800, h = 600) {
+  state.isUndoingRedoing = true;
+  state.undoStack = [];
+  state.redoStack = [];
+  setCanvasSize(w, h);
+  state.layers.forEach(layer => layer.canvas.remove());
+  state.layers = [];
+  state.nextLayerId = 1;
+  const overlay = document.getElementById('crop-overlay');
+  stage.innerHTML = '';
+  stage.appendChild(overlay);
+  addLayer("Background");
+  const bg = state.layers[0];
+  bg.ctx.fillStyle = "white";
+  bg.ctx.fillRect(0, 0, state.width, state.height);
+  setActiveLayer(bg.id);
+  setZoom(1.0);
+  updateUI();
+  exitCropMode();
+  state.isUndoingRedoing = false;
+  saveState();
+}
+
+function setCanvasSize(w, h) {
+  state.width = w;
+  state.height = h;
+  stage.style.width = w + 'px';
+  stage.style.height = h + 'px';
+  cropOverlay.width = w;
+  cropOverlay.height = h;
+}
+
+window.addEventListener('paste', (e) => {
+  const items = e.clipboardData.items;
+  for (let item of items) {
+    if (item.type.indexOf('image') !== -1) {
+      const blob = item.getAsFile();
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          addLayer("Pasted Image", img);
+          saveState();
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(blob);
+    }
+  }
+});
+
+function setZoom(lvl) {
+  state.zoom = Math.max(0.1, Math.min(5.0, lvl));
+  document.getElementById('zoom-val').innerText = Math.round(state.zoom * 100) + '%';
+  stage.style.transform = `scale(${state.zoom})`;
+  updateWrapperScroll();
+}
+
+function updateWrapperScroll() {
+  const currentW = state.width * state.zoom;
+  const currentH = state.height * state.zoom;
+  const availW = wrapper.clientWidth;
+  const availH = wrapper.clientHeight;
+  stage.style.marginLeft = currentW < availW ? ((availW - currentW) / 2) + 'px' : '0px';
+  stage.style.marginTop = currentH < availH ? ((availH - currentH) / 2) + 'px' : '0px';
+}
+
+window.onresize = updateWrapperScroll;
+
+function fitToScreen() {
+  const pad = 40;
+  const wRatio = (wrapper.clientWidth - pad) / state.width;
+  const hRatio = (wrapper.clientHeight - pad) / state.height;
+  const newZoom = Math.min(wRatio, hRatio, 1.0);
+  setZoom(newZoom);
+  wrapper.scrollLeft = 0;
+  wrapper.scrollTop = 0;
+}
+
+function addLayer(name, sourceImage = null) {
+  const id = state.nextLayerId++;
+  const canvas = document.createElement('canvas');
+  canvas.width = state.width;
+  canvas.height = state.height;
+  canvas.id = `layer-${id}`;
+  const ctx = canvas.getContext('2d');
+  if (sourceImage) {
+    ctx.drawImage(sourceImage, 0, 0);
+  }
+  const layer = {
+    id,
+    name: name || `Layer ${state.layers.length + 1}`,
+    canvas,
+    ctx,
+    visible: true,
+    opacity: 1.0,
+    x: 0,
+    y: 0,
+    brightness: 100,
+    contrast: 100,
+    saturate: 100,
+    blur: 0,
+    sepia: 0,
+    invert: 0,
+    hue: 0
+  };
+  state.layers.push(layer);
+  stage.insertBefore(canvas, cropOverlay);
+  setActiveLayer(id);
+  applyLayerStyles(layer);
+  return layer;
+}
+
+function duplicateLayer() {
+  const activeLayer = getActiveLayer();
+  if (!activeLayer) return;
+  const id = state.nextLayerId++;
+  const canvas = document.createElement('canvas');
+  canvas.width = state.width;
+  canvas.height = state.height;
+  canvas.id = `layer-${id}`;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(activeLayer.canvas, 0, 0);
+  const newLayer = {
+    id,
+    name: activeLayer.name + " copy",
+    canvas,
+    ctx,
+    visible: activeLayer.visible,
+    opacity: activeLayer.opacity,
+    x: activeLayer.x,
+    y: activeLayer.y,
+    brightness: activeLayer.brightness,
+    contrast: activeLayer.contrast,
+    saturate: activeLayer.saturate,
+    blur: activeLayer.blur,
+    sepia: activeLayer.sepia,
+    invert: activeLayer.invert,
+    hue: activeLayer.hue
+  };
+  const idx = state.layers.findIndex(l => l.id === state.activeLayerId);
+  state.layers.splice(idx + 1, 0, newLayer);
+  stage.insertBefore(canvas, cropOverlay);
+  setActiveLayer(id);
+  applyLayerStyles(newLayer);
+  refreshLayerZIndex();
+  saveState();
+}
+
+function setActiveLayer(id) {
+  state.activeLayerId = id;
+  updateLayersUI();
+  updateUI();
+}
+
+function getActiveLayer() {
+  return state.layers.find(l => l.id === state.activeLayerId);
+}
+
+function applyLayerStyles(layer) {
+  if (!layer || !layer.canvas) return;
+  layer.canvas.style.opacity = layer.opacity;
+  layer.canvas.style.display = layer.visible ? 'block' : 'none';
+  layer.canvas.style.transform = `translate(${layer.x}px, ${layer.y}px)`;
+  layer.canvas.style.filter = `brightness(${layer.brightness}%) contrast(${layer.contrast}%) saturate(${layer.saturate}%) blur(${layer.blur}px) sepia(${layer.sepia}%) invert(${layer.invert}%) hue-rotate(${layer.hue}deg)`;
+}
+
+function deleteLayer() {
+  if (state.layers.length <= 1) return alert("Cannot delete the last layer");
+  const idx = state.layers.findIndex(l => l.id === state.activeLayerId);
+  const layer = state.layers[idx];
+  layer.canvas.remove();
+  state.layers.splice(idx, 1);
+  setActiveLayer(state.layers[Math.max(0, idx - 1)].id);
+  saveState();
+}
+
+function moveLayerOrder(dir) {
+  const idx = state.layers.findIndex(l => l.id === state.activeLayerId);
+  if ((dir === 1 && idx < state.layers.length - 1) || (dir === -1 && idx > 0)) {
+    [state.layers[idx], state.layers[idx + dir]] = [state.layers[idx + dir], state.layers[idx]];
+    refreshLayerZIndex();
+    updateLayersUI();
+    saveState();
+  }
+}
+
+function refreshLayerZIndex() {
+  state.layers.forEach((l, idx) => {
+    l.canvas.style.zIndex = idx;
+  });
+}
+
+function getMousePos(e) {
+  const rect = stage.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) / state.zoom,
+    y: (e.clientY - rect.top) / state.zoom
+  };
+}
+
+stage.addEventListener('mousedown', e => {
+  if (state.tool === 'crop') return handleCropStart(e);
+  const layer = getActiveLayer();
+  if (!layer || !layer.visible) return;
+  const pos = getMousePos(e);
+  if (state.tool === 'text') {
+    placeText(pos, layer.ctx, layer);
+    saveState();
+    return;
+  }
+  if (state.tool === 'eyedropper') {
+    pickColor(pos);
+    return;
+  }
+  if (state.tool === 'spotHeal') {
+    if (e.altKey || e.metaKey) {
+      state.spotHeal.samplePoint = pos;
+      state.spotHeal.isCloning = false;
+      state.spotHeal.sourceCanvas = null;
+      cropOverlay.style.cursor = 'crosshair';
+      return;
+    } else if (state.spotHeal.samplePoint) {
+      state.spotHeal.isCloning = true;
+      if (layer) {
+        state.spotHeal.sourceCanvas = document.createElement('canvas');
+        state.spotHeal.sourceCanvas.width = layer.canvas.width;
+        state.spotHeal.sourceCanvas.height = layer.canvas.height;
+        state.spotHeal.sourceCanvas.getContext('2d').drawImage(layer.canvas, 0, 0);
+      }
+      state.spotHeal.cloneOffset.x = state.spotHeal.samplePoint.x - pos.x;
+      state.spotHeal.cloneOffset.y = state.spotHeal.samplePoint.y - pos.y;
+      state.isDrawing = true;
+      state.lastPos = pos;
+      drawSpotHeal(pos);
+      cropOverlay.style.cursor = 'none';
+      return;
+    } else {
+      alert('Please Alt/Command-click to set a sample point first for Spot Heal.');
+      return;
+    }
+  }
+  state.isDrawing = true;
+  state.lastPos = pos;
+  if (state.tool === 'brush' || state.tool === 'eraser') {
+    draw(pos);
+  } else if (state.tool === 'move') {
+    state.moveStart = {
+      x: e.clientX,
+      y: e.clientY,
+      layerX: layer.x,
+      layerY: layer.y
+    };
+  }
+});
+
+window.addEventListener('mousemove', e => {
+  if (state.tool === 'crop') return handleCropMove(e);
+  if (!state.isDrawing) return;
+  const layer = getActiveLayer();
+  if (!layer) return;
+  const pos = getMousePos(e);
+  if (state.tool === 'spotHeal' && state.spotHeal.isCloning) {
+    drawSpotHeal(pos);
+    state.lastPos = pos;
+    return;
+  }
+  if (state.tool === 'move') {
+    const dx = (e.clientX - state.moveStart.x) / state.zoom;
+    const dy = (e.clientY - state.moveStart.y) / state.zoom;
+    layer.x = state.moveStart.layerX + dx;
+    layer.y = state.moveStart.layerY + dy;
+    layer.canvas.style.transform = `translate(${layer.x}px, ${layer.y}px)`;
+  } else {
+    draw(pos);
+    state.lastPos = pos;
+  }
+});
+
+window.addEventListener('mouseup', () => {
+  const wasDrawing = state.isDrawing;
+  const wasMoving = (state.tool === 'move' && state.moveStart);
+  state.isDrawing = false;
+  state.moveStart = null;
+  if (state.tool === 'crop') handleCropEnd();
+  if (state.tool === 'spotHeal') {
+    state.spotHeal.isCloning = false;
+    state.spotHeal.sourceCanvas = null;
+    cropOverlay.style.cursor = state.spotHeal.samplePoint ? 'crosshair' : 'default';
+  }
+  if ((wasDrawing || wasMoving) && state.tool !== 'crop') {
+    saveState();
+  }
+});
+
+cropOverlay.addEventListener('mousemove', setCropCursor);
+
+cropOverlay.addEventListener('mouseleave', () => {
+  if (state.tool === 'crop' && !state.crop.isDragging) {
+    cropOverlay.style.cursor = 'crosshair';
+  } else if (state.tool === 'eyedropper') {
+    cropOverlay.style.cursor = 'default';
+  } else if (state.tool === 'spotHeal') {
+    cropOverlay.style.cursor = 'crosshair';
+  } else {
+    cropOverlay.style.cursor = 'default';
+  }
+});
+
+wrapper.addEventListener('wheel', e => {
+  if (e.ctrlKey) {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setZoom(state.zoom + delta);
+  }
+});
+
+function drawSpotHeal(currentPos) {
+  const layer = getActiveLayer();
+  if (!layer || !state.spotHeal.isCloning || !state.spotHeal.sourceCanvas) return;
+  const ctx = layer.ctx;
+  const brushSize = state.brush.size;
+  const brushRadius = brushSize / 2;
+  const destX_layer = currentPos.x - layer.x;
+  const destY_layer = currentPos.y - layer.y;
+  const lastDestX_layer = state.lastPos.x - layer.x;
+  const lastDestY_layer = state.lastPos.y - layer.y;
+  const dx_path = destX_layer - lastDestX_layer;
+  const dy_path = destY_layer - lastDestY_layer;
+  const distance = Math.sqrt(dx_path * dx_path + dy_path * dy_path);
+  const step = Math.max(1, Math.floor(brushSize / 4));
+  for (let i = 0; i <= distance; i += step) {
+    const p = (distance === 0) ? 1 : (i / distance);
+    const interpDestX_layer = lastDestX_layer + dx_path * p;
+    const interpDestY_layer = lastDestY_layer + dy_path * p;
+    const interpSourceX_layer = interpDestX_layer + state.spotHeal.cloneOffset.x;
+    const interpSourceY_layer = interpDestY_layer + state.spotHeal.cloneOffset.y;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(interpDestX_layer, interpDestY_layer, brushRadius, 0, Math.PI * 2, false);
+    ctx.closePath();
+    ctx.clip();
+    ctx.globalAlpha = state.brush.opacity / 100;
+    ctx.drawImage(
+      state.spotHeal.sourceCanvas,
+      interpSourceX_layer - brushRadius,
+      interpSourceY_layer - brushRadius,
+      brushSize,
+      brushSize,
+      interpDestX_layer - brushRadius,
+      interpDestY_layer - brushRadius,
+      brushSize,
+      brushSize
+    );
+    ctx.restore();
+  }
+}
+
+function draw(pos) {
+  const layer = getActiveLayer();
+  const ctx = layer.ctx;
+  const lx = pos.x - layer.x;
+  const ly = pos.y - layer.y;
+  const lastLx = state.lastPos.x - layer.x;
+  const lastLy = state.lastPos.y - layer.y;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = state.brush.size;
+  if (state.tool === 'eraser') {
+    ctx.globalCompositeOperation = 'destination-out';
+  } else {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = state.brush.color;
+    ctx.globalAlpha = state.brush.opacity / 100;
+  }
+  ctx.beginPath();
+  ctx.moveTo(lastLx, lastLy);
+  ctx.lineTo(lx, ly);
+  ctx.stroke();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1.0;
+}
+
+function rgbToHex(r, g, b) {
+  return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+function pickColor(pos) {
+  const layer = getActiveLayer();
+  if (!layer) return;
+  const lx = Math.max(0, Math.min(Math.floor(pos.x - layer.x), layer.canvas.width - 1));
+  const ly = Math.max(0, Math.min(Math.floor(pos.y - layer.y), layer.canvas.height - 1));
+  const pixel = layer.ctx.getImageData(lx, ly, 1, 1).data;
+  const hexColor = rgbToHex(pixel[0], pixel[1], pixel[2]);
+  state.brush.color = hexColor;
+  state.text.color = hexColor;
+  document.getElementById('brush-color').value = hexColor;
+  document.getElementById('text-color').value = hexColor;
+  setTool('move');
+}
+
+function placeText(pos, ctx, layer) {
+  if (!state.text.content) return;
+  const x = pos.x - layer.x;
+  const y = pos.y - layer.y;
+  ctx.font = `bold ${state.text.size}px ${state.text.fontFamily}`;
+  ctx.fillStyle = state.text.color;
+  ctx.textBaseline = 'middle';
+  if (state.text.shadowEnabled) {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 3;
+  }
+  ctx.fillText(state.text.content, x, y);
+  if (state.text.shadowEnabled) {
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+  }
+}
+
+function handleCropStart(e) {
+  if (!e.target.closest('#canvas-stage')) return;
+  const pos = getMousePos(e);
+  if (state.crop.rect) {
+    const handle = getHandleAtPoint(pos);
+    if (handle) {
+      state.crop.isDragging = true;
+      state.crop.isResizing = true;
+      state.crop.isMoving = false;
+      state.crop.activeHandle = handle;
+      state.crop.initialMouseX = pos.x;
+      state.crop.initialMouseY = pos.y;
+      state.crop.initialRect = {
+        ...state.crop.rect
+      };
+      return;
+    }
+    if (pos.x >= state.crop.rect.x && pos.x <= state.crop.rect.x + state.crop.rect.w &&
+      pos.y >= state.crop.rect.y && pos.y <= state.crop.rect.y + state.crop.rect.h) {
+      state.crop.isDragging = true;
+      state.crop.isResizing = false;
+      state.crop.isMoving = true;
+      state.crop.initialMouseX = pos.x;
+      state.crop.initialMouseY = pos.y;
+      state.crop.initialRect = {
+        ...state.crop.rect
+      };
+      return;
+    }
+  }
+  state.crop.isDragging = true;
+  state.crop.isResizing = false;
+  state.crop.isMoving = false;
+  state.crop.activeHandle = null;
+  state.crop.initialMouseX = pos.x;
+  state.crop.initialMouseY = pos.y;
+  state.crop.rect = {
+    x: pos.x,
+    y: pos.y,
+    w: 0,
+    h: 0
+  };
+}
+
+function handleCropMove(e) {
+  if (!state.crop.isDragging) return;
+  const pos = getMousePos(e);
+  if (state.crop.isMoving) {
+    moveCropRect(pos);
+  } else if (state.crop.isResizing) {
+    resizeCropRect(pos);
+  } else {
+    updateCropRect(pos);
+  }
+  drawCropOverlay();
+  updateCropDimensionsUI();
+}
+
+function handleCropEnd() {
+  state.crop.isDragging = false;
+  state.crop.isResizing = false;
+  state.crop.isMoving = false;
+  state.crop.activeHandle = null;
+  if (state.crop.rect && (state.crop.rect.w < 1 || state.crop.rect.h < 1)) {
+    state.crop.rect = null;
+  }
+  drawCropOverlay();
+  updateCropDimensionsUI();
+}
+
+function updateCropRect(currentPos) {
+  const {
+    initialMouseX,
+    initialMouseY,
+    aspectRatio
+  } = state.crop;
+  let x1 = initialMouseX;
+  let y1 = initialMouseY;
+  let x2 = currentPos.x;
+  let y2 = currentPos.y;
+  let w_raw = x2 - x1;
+  let h_raw = y2 - y1;
+  if (aspectRatio !== 'free') {
+    const [ratioW, ratioH] = getAspectRatioNums(aspectRatio);
+    const targetRatio = ratioW / ratioH;
+    if (Math.abs(w_raw) / targetRatio > Math.abs(h_raw)) {
+      h_raw = Math.sign(h_raw) * (Math.abs(w_raw) / targetRatio);
+    } else {
+      w_raw = Math.sign(w_raw) * (Math.abs(h_raw) * targetRatio);
+    }
+  }
+  let finalX = Math.min(x1, x1 + w_raw);
+  let finalY = Math.min(y1, y1 + h_raw);
+  let finalW = Math.abs(w_raw);
+  let finalH = Math.abs(h_raw);
+  finalX = Math.max(0, Math.min(finalX, state.width - finalW));
+  finalY = Math.max(0, Math.min(finalY, state.height - finalH));
+  finalW = Math.min(finalW, state.width - finalX);
+  finalH = Math.min(finalH, state.height - finalY);
+  state.crop.rect = {
+    x: finalX,
+    y: finalY,
+    w: Math.max(1, finalW),
+    h: Math.max(1, finalH)
+  };
+}
+
+function resizeCropRect(currentPos) {
+  const {
+    initialRect,
+    activeHandle,
+    aspectRatio
+  } = state.crop;
+  if (!initialRect || !activeHandle) return;
+  let fixedX, fixedY;
+  let currentX = currentPos.x;
+  let currentY = currentPos.y;
+  switch (activeHandle) {
+    case 'nw':
+      fixedX = initialRect.x + initialRect.w;
+      fixedY = initialRect.y + initialRect.h;
+      break;
+    case 'n':
+      fixedX = initialRect.x;
+      fixedY = initialRect.y + initialRect.h;
+      currentX = initialRect.x + initialRect.w;
+      break;
+    case 'ne':
+      fixedX = initialRect.x;
+      fixedY = initialRect.y + initialRect.h;
+      break;
+    case 'e':
+      fixedX = initialRect.x;
+      fixedY = initialRect.y;
+      currentY = initialRect.y + initialRect.h;
+      break;
+    case 'se':
+      fixedX = initialRect.x;
+      fixedY = initialRect.y;
+      break;
+    case 's':
+      fixedX = initialRect.x;
+      fixedY = initialRect.y;
+      currentX = initialRect.x + initialRect.w;
+      break;
+    case 'sw':
+      fixedX = initialRect.x + initialRect.w;
+      fixedY = initialRect.y;
+      break;
+    case 'w':
+      fixedX = initialRect.x + initialRect.w;
+      fixedY = initialRect.y;
+      currentY = initialRect.y + initialRect.h;
+      break;
+    default:
+      return;
+  }
+  let w_raw = currentX - fixedX;
+  let h_raw = currentY - fixedY;
+  if (activeHandle === 'n' || activeHandle === 's') {
+    w_raw = initialRect.w * Math.sign(w_raw || 1);
+  }
+  if (activeHandle === 'e' || activeHandle === 'w') {
+    h_raw = initialRect.h * Math.sign(h_raw || 1);
+  }
+  if (aspectRatio !== 'free') {
+    const [ratioW, ratioH] = getAspectRatioNums(aspectRatio);
+    const targetRatio = ratioW / ratioH;
+    if (activeHandle.includes('e') || activeHandle.includes('w')) {
+      h_raw = w_raw / targetRatio;
+    } else if (activeHandle.includes('n') || activeHandle.includes('s')) {
+      w_raw = h_raw * targetRatio;
+    } else {
+      if (Math.abs(w_raw) / targetRatio > Math.abs(h_raw)) {
+        h_raw = Math.sign(h_raw) * (Math.abs(w_raw) / targetRatio);
+      } else {
+        w_raw = Math.sign(w_raw) * (Math.abs(h_raw) * targetRatio);
+      }
+    }
+  }
+  let finalX = Math.min(fixedX, fixedX + w_raw);
+  let finalY = Math.min(fixedY, fixedY + h_raw);
+  let finalW = Math.abs(w_raw);
+  let finalH = Math.abs(h_raw);
+  finalW = Math.max(1, finalW);
+  finalH = Math.max(1, finalH);
+  finalX = Math.max(0, Math.min(finalX, state.width - finalW));
+  finalY = Math.max(0, Math.min(finalY, state.height - finalH));
+  state.crop.rect = {
+    x: finalX,
+    y: finalY,
+    w: finalW,
+    h: finalH
+  };
+}
+
+function getHandleAtPoint(pos) {
+  if (!state.crop.rect) return null;
+  const r = state.crop.rect;
+  const hs = HANDLE_SIZE / 2;
+  const handles = {
+    nw: {
+      x: r.x - hs,
+      y: r.y - hs,
+      cursor: 'nwse-resize'
+    },
+    n: {
+      x: r.x + r.w / 2 - hs,
+      y: r.y - hs,
+      cursor: 'ns-resize'
+    },
+    ne: {
+      x: r.x + r.w - hs,
+      y: r.y - hs,
+      cursor: 'nesw-resize'
+    },
+    e: {
+      x: r.x + r.w - hs,
+      y: r.y + r.h / 2 - hs,
+      cursor: 'ew-resize'
+    },
+    se: {
+      x: r.x + r.w - hs,
+      y: r.y + r.h - hs,
+      cursor: 'nwse-resize'
+    },
+    s: {
+      x: r.x + r.w / 2 - hs,
+      y: r.y + r.h - hs,
+      cursor: 'ns-resize'
+    },
+    sw: {
+      x: r.x - hs,
+      y: r.y + r.h - hs,
+      cursor: 'nesw-resize'
+    },
+    w: {
+      x: r.x - hs,
+      y: r.y + r.h / 2 - hs,
+      cursor: 'ew-resize'
+    },
+  };
+  for (const handleName in handles) {
+    const hRect = handles[handleName];
+    if (pos.x >= hRect.x && pos.x <= hRect.x + HANDLE_SIZE &&
+      pos.y >= hRect.y && pos.y <= hRect.y + HANDLE_SIZE) {
+      return handleName;
+    }
+  }
+  return null;
+}
+
+function drawCropOverlay() {
+  cropCtx.clearRect(0, 0, state.width, state.height);
+  if (!state.crop.rect) {
+    updateCropDimensionsUI();
+    return;
+  }
+  const r = state.crop.rect;
+  cropCtx.fillStyle = 'rgba(0,0,0,0.5)';
+  cropCtx.fillRect(0, 0, state.width, state.height);
+  cropCtx.clearRect(r.x, r.y, r.w, r.h);
+  cropCtx.strokeStyle = '#fff';
+  cropCtx.lineWidth = 2;
+  cropCtx.strokeRect(r.x, r.y, r.w, r.h);
+  if (!state.crop.isDragging) {
+    cropCtx.fillStyle = '#fff';
+    cropCtx.strokeStyle = '#000';
+    cropCtx.lineWidth = 1;
+    const hs = HANDLE_SIZE / 2;
+    const handles = [
+      [r.x, r.y],
+      [r.x + r.w / 2, r.y],
+      [r.x + r.w, r.y],
+      [r.x + r.w, r.y + r.h / 2],
+      [r.x + r.w, r.y + r.h],
+      [r.x + r.w / 2, r.y + r.h],
+      [r.x, r.y + r.h],
+      [r.x, r.y + r.h / 2]
+    ];
+    handles.forEach(p => {
+      cropCtx.fillRect(p[0] - hs, p[1] - hs, HANDLE_SIZE, HANDLE_SIZE);
+      cropCtx.strokeRect(p[0] - hs, p[1] - hs, HANDLE_SIZE, HANDLE_SIZE);
+    });
+  }
+  updateCropDimensionsUI();
+}
+
+function updateCropDimensionsUI() {
+  if (state.crop.rect) {
+    cropDimensionsSpan.innerText = `${Math.round(state.crop.rect.w)} x ${Math.round(state.crop.rect.h)} px`;
+  } else {
+    cropDimensionsSpan.innerText = 'Draw rect to crop';
+  }
+}
+
+function setCropCursor(e) {
+  if (state.tool === 'crop' && !state.crop.isDragging) {
+    const pos = getMousePos(e);
+    const handle = getHandleAtPoint(pos);
+    if (handle) {
+      const cursors = {
+        nw: 'nwse-resize',
+        n: 'ns-resize',
+        ne: 'nesw-resize',
+        e: 'ew-resize',
+        se: 'nwse-resize',
+        s: 'ns-resize',
+        sw: 'nesw-resize',
+        w: 'ew-resize',
+      };
+      cropOverlay.style.cursor = cursors[handle];
+    } else if (state.crop.rect && pos.x >= state.crop.rect.x && pos.x <= state.crop.rect.x + state.crop.rect.w &&
+      pos.y >= state.crop.rect.y && pos.y <= state.crop.rect.y + state.crop.rect.h) {
+      cropOverlay.style.cursor = 'move';
+    } else {
+      cropOverlay.style.cursor = 'crosshair';
+    }
+  } else if (state.tool === 'text') {
+    cropOverlay.style.cursor = 'text';
+  } else if (state.tool === 'eyedropper') {
+    cropOverlay.style.cursor = 'crosshair';
+  } else if (state.tool === 'spotHeal') {
+    if (state.spotHeal.isCloning) {
+      cropOverlay.style.cursor = 'none';
+    } else {
+      cropOverlay.style.cursor = 'crosshair';
+    }
+  } else {
+    cropOverlay.style.cursor = 'default';
+  }
+}
+
+function applyCrop() {
+  if (!state.crop.rect || state.crop.rect.w < 1) return;
+  const r = state.crop.rect;
+  const newW = Math.round(r.w);
+  const newH = Math.round(r.h);
+  state.layers.forEach(layer => {
+    const tempC = document.createElement('canvas');
+    tempC.width = newW;
+    tempC.height = newH;
+    const tempCtx = tempC.getContext('2d');
+    tempCtx.drawImage(layer.canvas, r.x - layer.x, r.y - layer.y, newW, newH, 0, 0, newW, newH);
+    layer.canvas.width = newW;
+    layer.canvas.height = newH;
+    layer.ctx = layer.canvas.getContext('2d');
+    layer.ctx.drawImage(tempC, 0, 0);
+    layer.x = 0;
+    layer.y = 0;
+    layer.canvas.style.transform = 'translate(0,0)';
+  });
+  setCanvasSize(newW, newH);
+  exitCropMode();
+  setZoom(1.0);
+  fitToScreen();
+  saveState();
+}
+
+function updateUI() {
+  tools.forEach(t => {
+    const btn = document.getElementById(`tool-${t}`);
+    if (btn) btn.classList.toggle('active', state.tool === t);
+  });
+  document.querySelectorAll('.option-group').forEach(el => el.classList.add('hidden'));
+  if (state.tool === 'brush' || state.tool === 'eraser' || state.tool === 'spotHeal') {
+    document.getElementById('opt-brush').classList.remove('hidden');
+    const opacityContainer = document.getElementById('brush-opacity-container');
+    const colorContainer = document.getElementById('brush-color-container');
+    opacityContainer.style.display = 'none';
+    colorContainer.style.display = 'none';
+    if (state.tool === 'brush') {
+      opacityContainer.style.display = 'flex';
+      colorContainer.style.display = 'flex';
+    } else if (state.tool === 'spotHeal') {
+      opacityContainer.style.display = 'flex';
+    }
+  }
+  if (state.tool === 'text') {
+    document.getElementById('opt-text').classList.remove('hidden');
+    document.getElementById('text-font-family').value = state.text.fontFamily;
+    document.getElementById('text-shadow-enabled').checked = state.text.shadowEnabled;
+  }
+  if (state.tool === 'crop') {
+    document.getElementById('opt-crop').classList.remove('hidden');
+    cropRatioButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.ratio === state.crop.aspectRatio);
+    });
+  }
+  if (state.tool === 'filters') {
+    document.getElementById('opt-filters').classList.remove('hidden');
+    const activeLayer = getActiveLayer();
+    if (activeLayer) {
+      document.getElementById('filter-light-slider').value = activeLayer.brightness;
+      document.getElementById('filter-contrast-slider').value = activeLayer.contrast;
+      document.getElementById('filter-saturation-slider').value = activeLayer.saturate;
+      document.getElementById('filter-blur-slider').value = activeLayer.blur;
+      document.getElementById('filter-sepia-slider').value = activeLayer.sepia;
+      document.getElementById('filter-invert-slider').value = activeLayer.invert;
+      document.getElementById('filter-hue-slider').value = activeLayer.hue;
+    }
+  }
+  const active = getActiveLayer();
+  if (active) {
+    document.getElementById('layer-opacity').value = active.opacity * 100;
+  }
+  updateUndoRedoButtons();
+}
+
+function updateLayersUI() {
+  layersList.innerHTML = '';
+  state.layers.forEach(layer => {
+    const el = document.createElement('div');
+    el.className = `layer-item ${layer.id === state.activeLayerId ? 'active' : ''}`;
+    el.onclick = () => setActiveLayer(layer.id);
+    el.innerHTML = `
+      <button class="layer-vis-btn ${layer.visible ? 'visible' : ''}">
+        <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
+          <path d="${layer.visible ? 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z' : 'M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.45-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-4 .7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z'}"/>
+        </svg>
+      </button>
+      <span class="layer-name">${layer.name}</span>
+    `;
+    el.querySelector('.layer-vis-btn').onclick = (e) => {
+      e.stopPropagation();
+      layer.visible = !layer.visible;
+      layer.canvas.style.display = layer.visible ? 'block' : 'none';
+      updateLayersUI();
+    };
+    layersList.appendChild(el);
+  });
+  refreshLayerZIndex();
+}
+
+function resetFilters() {
+  const layer = getActiveLayer();
+  if (layer) {
+    layer.brightness = 100;
+    layer.contrast = 100;
+    layer.saturate = 100;
+    layer.blur = 0;
+    layer.sepia = 0;
+    layer.invert = 0;
+    layer.hue = 0;
+    applyLayerStyles(layer);
+    updateUI();
+    saveState();
+  }
+}
+
+function saveState() {
+  if (state.isUndoingRedoing) return;
+  const snapshot = {
+    width: state.width,
+    height: state.height,
+    zoom: state.zoom,
+    activeLayerId: state.activeLayerId,
+    layers: state.layers.map(layer => ({
+      id: layer.id,
+      name: layer.name,
+      x: layer.x,
+      y: layer.y,
+      opacity: layer.opacity,
+      visible: layer.visible,
+      brightness: layer.brightness,
+      contrast: layer.contrast,
+      saturate: layer.saturate,
+      blur: layer.blur,
+      sepia: layer.sepia,
+      invert: layer.invert,
+      hue: layer.hue,
+      imageDataURL: layer.canvas.toDataURL()
+    }))
+  };
+  state.undoStack.push(snapshot);
+  if (state.undoStack.length > state.maxHistory) {
+    state.undoStack.shift();
+  }
+  state.redoStack = [];
+  updateUndoRedoButtons();
+}
+
+async function undo() {
+  if (state.undoStack.length <= 1) return;
+  const currentState = state.undoStack.pop();
+  state.redoStack.push(currentState);
+  const previousState = state.undoStack[state.undoStack.length - 1];
+  await _applyStateSnapshot(previousState);
+}
+
+async function redo() {
+  if (state.redoStack.length === 0) return;
+  const nextState = state.redoStack.pop();
+  state.undoStack.push(nextState);
+  await _applyStateSnapshot(nextState);
+}
+
+async function _applyStateSnapshot(snapshot, isProjectLoad = false) {
+  state.isUndoingRedoing = true;
+  state.width = snapshot.width;
+  state.height = snapshot.height;
+  setCanvasSize(snapshot.width, snapshot.height);
+  state.layers.forEach(layer => layer.canvas.remove());
+  state.layers = [];
+  const layerPromises = snapshot.layers.map(savedLayer => {
+    return new Promise(resolve => {
+      const canvas = document.createElement('canvas');
+      canvas.width = state.width;
+      canvas.height = state.height;
+      canvas.id = `layer-${savedLayer.id}`;
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0);
+        const layer = {
+          id: savedLayer.id,
+          name: savedLayer.name,
+          canvas,
+          ctx,
+          visible: savedLayer.visible,
+          opacity: savedLayer.opacity,
+          x: savedLayer.x,
+          y: savedLayer.y,
+          brightness: savedLayer.brightness,
+          contrast: savedLayer.contrast,
+          saturate: savedLayer.saturate,
+          blur: savedLayer.blur,
+          sepia: savedLayer.sepia,
+          invert: savedLayer.invert,
+          hue: savedLayer.hue
+        };
+        state.layers.push(layer);
+        stage.insertBefore(canvas, cropOverlay);
+        applyLayerStyles(layer);
+        resolve();
+      };
+      img.src = savedLayer.imageDataURL;
+    });
+  });
+  await Promise.all(layerPromises);
+  state.layers.sort((a, b) => {
+    const aIdx = snapshot.layers.findIndex(l => l.id === a.id);
+    const bIdx = snapshot.layers.findIndex(l => l.id === b.id);
+    return aIdx - bIdx;
+  });
+  refreshLayerZIndex();
+  if (isProjectLoad) {
+    state.nextLayerId = Math.max(...state.layers.map(l => l.id), 0) + 1;
+    state.undoStack = [];
+    state.redoStack = [];
+    saveState();
+  }
+  state.activeLayerId = snapshot.activeLayerId;
+  state.isUndoingRedoing = false;
+  updateLayersUI();
+  updateUI();
+  fitToScreen();
+}
+
+function updateUndoRedoButtons() {
+  const u = document.getElementById('btn-undo');
+  const r = document.getElementById('btn-redo');
+  if (u) u.disabled = state.undoStack.length <= 1;
+  if (r) r.disabled = state.redoStack.length === 0;
+}
+
+function setTool(t) {
+  state.tool = t;
+  state.crop.active = false;
+  state.crop.rect = null;
+  state.crop.isDragging = false;
+  state.crop.isResizing = false;
+  state.crop.isMoving = false;
+  state.crop.activeHandle = null;
+  cropCtx.clearRect(0, 0, state.width, state.height);
+  updateCropDimensionsUI();
+  state.spotHeal.samplePoint = null;
+  state.spotHeal.isCloning = false;
+  state.spotHeal.cloneOffset = {
+    x: 0,
+    y: 0
+  };
+  state.spotHeal.sourceCanvas = null;
+  if (t === 'crop') {
+    cropOverlay.style.cursor = 'crosshair';
+    state.crop.active = true;
+    if (state.crop.rect) {
+      drawCropOverlay();
+      updateCropDimensionsUI();
+    }
+  } else if (t === 'text') {
+    cropOverlay.style.cursor = 'text';
+  } else if (t === 'eyedropper') {
+    cropOverlay.style.cursor = 'crosshair';
+  } else if (t === 'spotHeal') {
+    cropOverlay.style.cursor = 'crosshair';
+  } else {
+    cropOverlay.style.cursor = 'default';
+  }
+  updateUI();
+}
+
+function exitCropMode() {
+  state.crop.rect = null;
+  state.crop.isDragging = false;
+  state.crop.isResizing = false;
+  state.crop.isMoving = false;
+  state.crop.activeHandle = null;
+  state.crop.aspectRatio = 'free';
+  cropCtx.clearRect(0, 0, state.width, state.height);
+  updateCropDimensionsUI();
+  setTool('move');
+  cropOverlay.style.cursor = 'default';
+  updateUI();
+}
+
+function getAspectRatioNums(aspectRatio) {
+  if (aspectRatio === 'square') return [1, 1];
+  if (aspectRatio === '4:3') return [4, 3];
+  if (aspectRatio === '16:9') return [16, 9];
+  return [1, 1];
+}
+
+function moveCropRect(currentPos) {
+  const {
+    initialRect,
+    initialMouseX,
+    initialMouseY
+  } = state.crop;
+  const dx = currentPos.x - initialMouseX;
+  const dy = currentPos.y - initialMouseY;
+  let newX = initialRect.x + dx;
+  let newY = initialRect.y + dy;
+  newX = Math.max(0, Math.min(newX, state.width - initialRect.w));
+  newY = Math.max(0, Math.min(newY, state.height - initialRect.h));
+  state.crop.rect.x = newX;
+  state.crop.rect.y = newY;
+}
+
+document.getElementById('tool-move').onclick = () => setTool('move');
+document.getElementById('tool-brush').onclick = () => setTool('brush');
+document.getElementById('tool-eraser').onclick = () => setTool('eraser');
+document.getElementById('tool-text').onclick = () => setTool('text');
+document.getElementById('tool-crop').onclick = () => setTool('crop');
+document.getElementById('tool-eyedropper').onclick = () => setTool('eyedropper');
+document.getElementById('tool-spotHeal').onclick = () => setTool('spotHeal');
+document.getElementById('btn-filters').onclick = () => setTool('filters');
+document.getElementById('brush-size').oninput = (e) => state.brush.size = e.target.value;
+document.getElementById('brush-color').oninput = (e) => state.brush.color = e.target.value;
+document.getElementById('brush-opacity').oninput = (e) => state.brush.opacity = e.target.value;
+document.getElementById('text-content').oninput = (e) => state.text.content = e.target.value;
+document.getElementById('text-size').oninput = (e) => state.text.size = e.target.value;
+document.getElementById('text-color').oninput = (e) => state.text.color = e.target.value;
+document.getElementById('text-font-family').onchange = (e) => state.text.fontFamily = e.target.value;
+document.getElementById('text-shadow-enabled').onchange = (e) => state.text.shadowEnabled = e.target.checked;
+document.getElementById('btn-reset-filters').onclick = resetFilters;
+
+document.getElementById('filter-light-slider').oninput = (e) => {
+  const l = getActiveLayer();
+  if (l) { l.brightness = e.target.value; applyLayerStyles(l); }
+};
+document.getElementById('filter-contrast-slider').oninput = (e) => {
+  const l = getActiveLayer();
+  if (l) { l.contrast = e.target.value; applyLayerStyles(l); }
+};
+document.getElementById('filter-saturation-slider').oninput = (e) => {
+  const l = getActiveLayer();
+  if (l) { l.saturate = e.target.value; applyLayerStyles(l); }
+};
+document.getElementById('filter-blur-slider').oninput = (e) => {
+  const l = getActiveLayer();
+  if (l) { l.blur = e.target.value; applyLayerStyles(l); }
+};
+document.getElementById('filter-sepia-slider').oninput = (e) => {
+  const l = getActiveLayer();
+  if (l) { l.sepia = e.target.value; applyLayerStyles(l); }
+};
+document.getElementById('filter-invert-slider').oninput = (e) => {
+  const l = getActiveLayer();
+  if (l) { l.invert = e.target.value; applyLayerStyles(l); }
+};
+document.getElementById('filter-hue-slider').oninput = (e) => {
+  const l = getActiveLayer();
+  if (l) { l.hue = e.target.value; applyLayerStyles(l); }
+};
+
+document.querySelectorAll('#opt-filters input').forEach(input => {
+  input.onchange = () => saveState();
+});
+
+document.getElementById('zoom-in').onclick = () => setZoom(state.zoom + 0.1);
+document.getElementById('zoom-out').onclick = () => setZoom(state.zoom - 0.1);
+document.getElementById('zoom-fit').onclick = fitToScreen;
+document.getElementById('zoom-orig').onclick = () => setZoom(1.0);
+
+document.getElementById('layer-opacity').onchange = (e) => {
+  const l = getActiveLayer();
+  if (l) {
+    l.opacity = e.target.value / 100;
+    applyLayerStyles(l);
+    saveState();
+  }
+};
+
+document.getElementById('btn-add-layer').onclick = () => {
+  addLayer();
+  saveState();
+};
+
+document.getElementById('btn-duplicate-layer').onclick = duplicateLayer;
+document.getElementById('btn-delete-layer').onclick = deleteLayer;
+document.getElementById('btn-layer-up').onclick = () => moveLayerOrder(1);
+document.getElementById('btn-layer-down').onclick = () => moveLayerOrder(-1);
+document.getElementById('btn-apply-crop').onclick = applyCrop;
+document.getElementById('btn-cancel-crop').onclick = exitCropMode;
+
+cropRatioButtons.forEach(button => {
+  button.onclick = () => {
+    state.crop.aspectRatio = button.dataset.ratio;
+    if (state.crop.rect) {
+      let r = state.crop.rect;
+      let newW = r.w;
+      let newH = r.h;
+      if (state.crop.aspectRatio !== 'free') {
+        const [ratioW, ratioH] = getAspectRatioNums(state.crop.aspectRatio);
+        const targetRatio = ratioW / ratioH;
+        if (newW / targetRatio > newH) {
+          newH = newW / targetRatio;
+        } else {
+          newW = newH * targetRatio;
+        }
+      }
+      state.crop.rect = {
+        x: r.x,
+        y: r.y,
+        w: Math.max(1, newW),
+        h: Math.max(1, newH)
+      };
+    }
+    updateUI();
+    drawCropOverlay();
+    updateCropDimensionsUI();
+    saveState();
+  };
+});
+
+const fileInput = document.getElementById('file-input');
+fileInput.onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const img = new Image();
+    img.onload = () => {
+      if (state.layers.length === 1 && state.layers[0].name === "Background") {
+        setCanvasSize(img.width, img.height);
+        const bg = state.layers[0];
+        bg.canvas.width = img.width;
+        bg.canvas.height = img.height;
+        bg.ctx = bg.canvas.getContext('2d');
+        bg.ctx.drawImage(img, 0, 0);
+        bg.name = file.name;
+        applyLayerStyles(bg);
+        updateLayersUI();
+        fitToScreen();
+      } else {
+        addLayer(file.name, img);
+      }
+      saveState();
+    };
+    img.src = evt.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+function openProjectFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const loadedProjectData = JSON.parse(e.target.result);
+      await _applyStateSnapshot(loadedProjectData, true);
+    } catch (error) {
+      console.error("Failed to load project:", error);
+      alert("Failed to load project. The file might be corrupted or not a valid project file.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('btn-save-project').onclick = () => {
+  const projectData = {
+    width: state.width,
+    height: state.height,
+    zoom: state.zoom,
+    activeLayerId: state.activeLayerId,
+    nextLayerId: state.nextLayerId,
+    layers: state.layers.map(layer => ({
+      id: layer.id,
+      name: layer.name,
+      x: layer.x,
+      y: layer.y,
+      opacity: layer.opacity,
+      visible: layer.visible,
+      brightness: layer.brightness,
+      contrast: layer.contrast,
+      saturate: layer.saturate,
+      blur: layer.blur,
+      sepia: layer.sepia,
+      invert: layer.invert,
+      hue: layer.hue,
+      imageDataURL: layer.canvas.toDataURL()
+    }))
+  };
+  const json = JSON.stringify(projectData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'project.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+projectInput.onchange = (e) => openProjectFile(e.target.files[0]);
+
+document.getElementById('btn-undo').onclick = undo;
+document.getElementById('btn-redo').onclick = redo;
+
+document.getElementById('btn-export').onclick = () => {
+  const exCanvas = document.createElement('canvas');
+  exCanvas.width = state.width;
+  exCanvas.height = state.height;
+  const exCtx = exCanvas.getContext('2d');
+  state.layers.forEach(l => {
+    if (l.visible) {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = state.width;
+      tempCanvas.height = state.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.filter = `brightness(${l.brightness}%) contrast(${l.contrast}%) saturate(${l.saturate}%) blur(${l.blur}px) sepia(${l.sepia}%) invert(${l.invert}%) hue-rotate(${l.hue}deg)`;
+      tempCtx.drawImage(l.canvas, 0, 0);
+      exCtx.globalAlpha = l.opacity;
+      exCtx.drawImage(tempCanvas, l.x, l.y);
+    }
+  });
+  const link = document.createElement('a');
+  link.download = 'edited_image.png';
+  link.href = exCanvas.toDataURL();
+  link.click();
+};
+
+document.getElementById('btn-new').onclick = () => {
+  document.getElementById('modal-title').innerText = "New Canvas";
+  dimsGroup.classList.remove('hidden');
+  scaleGroup.classList.add('hidden');
+  modalAction = 'new';
+  modal.classList.remove('hidden');
+};
+
+document.getElementById('btn-resize').onclick = () => {
+  document.getElementById('modal-title').innerText = "Resize Canvas";
+  inpWidth.value = state.width;
+  inpHeight.value = state.height;
+  state.resize.originalAspectRatio = state.width / state.height;
+  keepAspectRatioCheckbox.checked = true;
+  state.resize.keepAspectRatio = true;
+  dimsGroup.classList.remove('hidden');
+  scaleGroup.classList.add('hidden');
+  modalAction = 'resize';
+  modal.classList.remove('hidden');
+};
+
+document.getElementById('btn-scale-layer').onclick = () => {
+  if (!getActiveLayer()) return;
+  document.getElementById('modal-title').innerText = "Scale Active Layer";
+  dimsGroup.classList.add('hidden');
+  scaleGroup.classList.remove('hidden');
+  document.getElementById('inp-scale').value = 100;
+  modalAction = 'scaleLayer';
+  modal.classList.remove('hidden');
+};
+
+document.getElementById('btn-modal-cancel').onclick = () => modal.classList.add('hidden');
+
+document.getElementById('btn-modal-confirm').onclick = () => {
+  if (modalAction === 'new') {
+    const w = parseInt(inpWidth.value);
+    const h = parseInt(inpHeight.value);
+    if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
+      alert("Please enter valid width and height.");
+      return;
+    }
+    init(w, h);
+    fitToScreen();
+  } else if (modalAction === 'resize') {
+    const w = parseInt(inpWidth.value);
+    const h = parseInt(inpHeight.value);
+    if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
+      alert("Please enter valid width and height.");
+      return;
+    }
+    const oldW = state.width;
+    const oldH = state.height;
+    setCanvasSize(w, h);
+    const scaleX = w / oldW;
+    const scaleY = h / oldH;
+    state.layers.forEach(l => {
+      const temp = document.createElement('canvas');
+      temp.width = oldW;
+      temp.height = oldH;
+      temp.getContext('2d').drawImage(l.canvas, 0, 0);
+      l.canvas.width = w;
+      l.canvas.height = h;
+      l.ctx = l.canvas.getContext('2d');
+      l.ctx.imageSmoothingEnabled = true;
+      if (l.ctx.imageSmoothingQuality) {
+        l.ctx.imageSmoothingQuality = "high";
+      }
+      l.ctx.drawImage(temp, 0, 0, w, h);
+      l.x = l.x * scaleX;
+      l.y = l.y * scaleY;
+      l.canvas.style.transform = `translate(${l.x}px, ${l.y}px)`;
+    });
+    fitToScreen();
+    saveState();
+  } else if (modalAction === 'scaleLayer') {
+    const scale = parseFloat(document.getElementById('inp-scale').value) / 100;
+    if (isNaN(scale) || scale <= 0) {
+      alert("Please enter a valid scale percentage.");
+      return;
+    }
+    const layer = getActiveLayer();
+    if (layer) {
+      const temp = document.createElement('canvas');
+      temp.width = layer.canvas.width;
+      temp.height = layer.canvas.height;
+      temp.getContext('2d').drawImage(layer.canvas, 0, 0);
+      const ctx = layer.ctx;
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      if (ctx.imageSmoothingQuality) {
+        ctx.imageSmoothingQuality = "high";
+      }
+      ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
+      const newWidth = temp.width * scale;
+      const newHeight = temp.height * scale;
+      const startX = (layer.canvas.width - newWidth) / 2;
+      const startY = (layer.canvas.height - newHeight) / 2;
+      ctx.drawImage(temp, startX, startY, newWidth, newHeight);
+      ctx.restore();
+      saveState();
+    }
+  }
+  modal.classList.add('hidden');
+  updateUndoRedoButtons();
+};
+
+inpWidth.addEventListener('input', () => {
+  if (modalAction === 'resize' && state.resize.keepAspectRatio) {
+    const newWidth = parseInt(inpWidth.value);
+    if (!isNaN(newWidth) && newWidth > 0) {
+      inpHeight.value = Math.round(newWidth / state.resize.originalAspectRatio);
+    }
+  }
+});
+
+inpHeight.addEventListener('input', () => {
+  if (modalAction === 'resize' && state.resize.keepAspectRatio) {
+    const newHeight = parseInt(inpHeight.value);
+    if (!isNaN(newHeight) && newHeight > 0) {
+      inpWidth.value = Math.round(newHeight * state.resize.originalAspectRatio);
+    }
+  }
+});
+
+keepAspectRatioCheckbox.addEventListener('change', () => {
+  state.resize.keepAspectRatio = keepAspectRatioCheckbox.checked;
+  if (state.resize.keepAspectRatio && modalAction === 'resize') {
+    const currentWidth = parseInt(inpWidth.value);
+    const currentHeight = parseInt(inpHeight.value);
+    if (!isNaN(currentWidth) && currentWidth > 0) {
+      inpHeight.value = Math.round(currentWidth / state.resize.originalAspectRatio);
+    } else if (!isNaN(currentHeight) && currentHeight > 0) {
+      inpWidth.value = Math.round(currentHeight * state.resize.originalAspectRatio);
+    }
+  }
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 'z') { e.preventDefault(); undo(); }
+    if (e.key === 'y') { e.preventDefault(); redo(); }
+  }
+});
+
+init();
+
+</script>
+  </body>
+</html>
