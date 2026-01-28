@@ -5,6 +5,7 @@
 [imageED](https://vanillahero.github.io/imaged.html) |
 [imageComp](https://vanillahero.github.io/imagecomp.html) |
 [RetroMaker](https://vanillahero.github.io/retromaker.html) |
+[ASCIImaker](https://vanillahero.github.io/image2ascii.html) |
 [VideoPlayer](https://vanillahero.github.io/videoplayer.html) |
 [Emojis](https://vanillahero.github.io/emojis.html)
 
