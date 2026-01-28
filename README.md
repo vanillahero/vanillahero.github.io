@@ -4,7 +4,8 @@
 [imagUP](https://vanillahero.github.io/imageup.html) |
 [imageED](https://vanillahero.github.io/imaged.html) |
 [imageComp](https://vanillahero.github.io/imagecomp.html) |
-[VideoPlayer](https://vanillahero.github.io/videoplayer.html)
+[VideoPlayer](https://vanillahero.github.io/videoplayer.html) |
+[Emojis](https://vanillahero.github.io/emojis.html)
 
 **Games:**
 [100Laps](https://vanillahero.github.io/100laps.html) |
