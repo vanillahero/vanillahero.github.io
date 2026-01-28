@@ -11,5 +11,3 @@
 [Lander](https://vanillahero.github.io/lander.html) |
 [Sokoban](https://vanillahero.github.io/sokoban.html) |
 [Uno](https://vanillahero.github.io/uno.html)
-
-&copy; Johnny Heggelund
