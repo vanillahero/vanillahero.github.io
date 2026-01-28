@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Compression</title>
+<style>
+
+:root {
+  --background-color: #1a1b1e;
+  --surface-color: #2a2b2e;
+  --primary-color: #007bff;
+  --text-color: #f0f1f2;
+  --text-muted-color: #aaa;
+  --border-color: #444;
+  --success-color: #28a745;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.95em;
+}
+
+.main-layout {
+  display: flex;
+  gap: 0.25rem;
+  width: 100%;
+  height: calc(100vh - 0.5rem);
+  max-width: 1600px;
+  padding: 0.25rem;
+  box-sizing: border-box;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface-color);
+  border-radius: 8px;
+  padding: 0.25rem;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.left-panel {
+  flex: 1;
+  min-width: 300px;
+}
+
+.right-panel {
+  width: 280px;
+  flex-shrink: 0;
+  gap: 0.25rem;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.image-display-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  min-height: 0;
+  background-color: var(--background-color);
+  border-radius: 8px;
+}
+
+.image-display-container.original-size-mode {
+  overflow: auto;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+#preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.image-display-container.original-size-mode #preview-image {
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  object-fit: none;
+}
+
+.upload-box {
+  flex-shrink: 0;
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  padding: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+  text-align: center;
+}
+
+.upload-box.dragover {
+  border-color: var(--primary-color);
+  background-color: #333;
+}
+
+.upload-box h2 {
+  margin: 0 0 0.2rem 0;
+  font-size: 1.0em;
+  pointer-events: none;
+}
+
+.upload-box p {
+  margin: 0;
+  color: var(--text-muted-color);
+  font-size: 0.85em;
+  pointer-events: none;
+}
+
+#file-input {
+  display: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.compression-controls {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  text-align: left;
+  padding: 0.8rem;
+  background-color: var(--background-color);
+  border-radius: 8px;
+}
+
+.compression-controls h3 {
+  margin-top: 0;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.3rem;
+  text-align: center;
+  font-size: 0.95em;
+}
+
+.slider-group {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.15rem;
+}
+
+.slider-group label {
+  flex-basis: 70px;
+  white-space: nowrap;
+  font-size: 0.85em;
+}
+
+.slider-group input[type="range"] {
+  flex-grow: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  background: var(--border-color);
+  outline: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.slider-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  cursor: pointer;
+  margin-top: -5px;
+}
+
+.slider-group input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  cursor: pointer;
+}
+
+.slider-group span {
+  width: 30px;
+  text-align: right;
+  font-weight: bold;
+  color: var(--primary-color);
+  font-size: 0.85em;
+}
+
+.settings-section {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  text-align: left;
+  padding: 0.8rem;
+  background-color: var(--background-color);
+  border-radius: 8px;
+}
+
+.settings-section h3 {
+  margin-top: 0;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.3rem;
+  text-align: center;
+  font-size: 0.95em;
+}
+
+.preview-format-options {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  font-size: 0.85em;
+  margin-bottom: 0.5rem;
+}
+
+.preview-format-options label {
+  cursor: pointer;
+}
+
+.preview-size-options {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-button {
+  flex-grow: 1;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.5rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s, box-shadow 0.2s;
+  font-size: 0.8em;
+}
+
+.action-button:hover {
+  background-color: #0069d9;
+}
+
+.action-button.active {
+  background-color: var(--success-color);
+  box-shadow: 0 0 0 2px var(--success-color);
+}
+
+.action-button.active:hover {
+  background-color: #218838;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.result-card {
+  background-color: var(--background-color);
+  padding: 0.6rem;
+  border-radius: 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.result-card h3 {
+  margin-top: 0;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.95em;
+}
+
+.stats {
+  margin-bottom: 0.6rem;
+  font-size: 0.8em;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.stats .arrow {
+  color: var(--primary-color);
+}
+
+.stats strong {
+  color: var(--success-color);
+}
+
+.download-button {
+  display: inline-block;
+  background-color: var(--success-color);
+  color: white;
+  padding: 0.5rem 0.8rem;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: bold;
+  transition: background-color 0.2s;
+  font-size: 0.85em;
+}
+
+.download-button:hover {
+  background-color: #218838;
+}
+
+.right-panel>p:last-of-type {
+  margin-top: auto;
+  padding-top: 0.5rem;
+  color: var(--text-muted-color);
+  text-align: center;
+  font-size: 0.75em;
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .main-layout {
+    flex-direction: column;
+    height: auto;
+    padding: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .left-panel,
+  .right-panel {
+    flex: 1 1 100%;
+    min-width: unset;
+    max-width: unset;
+    width: 100%;
+  }
+
+  .right-panel {
+    order: -1;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+}
+
+</style>
+  </head>
+  <body>
+    <div class="main-layout">
+      <div class="panel left-panel">
+        <div id="image-display-container" class="image-display-container hidden">
+          <img id="preview-image" src="" alt="Live Preview">
+        </div>
+      </div>
+      <div class="panel right-panel">
+        <div id="upload-box" class="upload-box">
+          <h2>Upload or Paste Image</h2>
+          <p>Click here to choose a file, or simply paste (Ctrl+V) an image.</p>
+        </div>
+        <div id="preview-settings" class="settings-section hidden">
+          <h3>Preview Settings</h3>
+          <div class="preview-format-options">
+            <input type="radio" id="preview-webp" name="preview-format" value="webp" checked>
+            <label for="preview-webp">WebP</label>
+            <input type="radio" id="preview-jpeg" name="preview-format" value="jpeg">
+            <label for="preview-jpeg">JPEG</label>
+          </div>
+          <div class="preview-size-options">
+            <button id="fit-to-screen-btn" class="action-button">Fit to screen</button>
+            <button id="original-size-btn" class="action-button">Original size</button>
+          </div>
+        </div>
+        <div id="compression-controls" class="compression-controls hidden">
+          <h3>Compression Settings</h3>
+          <div class="slider-group">
+            <label for="webp-quality-slider">WebP Quality:</label>
+            <input type="range" id="webp-quality-slider" min="0" max="100" value="25">
+            <span id="webp-quality-value">25%</span>
+          </div>
+          <div class="slider-group">
+            <label for="jpeg-quality-slider">JPEG Quality:</label>
+            <input type="range" id="jpeg-quality-slider" min="0" max="100" value="30">
+            <span id="jpeg-quality-value">30%</span>
+          </div>
+        </div>
+        <div id="results-grid" class="results-grid hidden">
+          <div class="result-card">
+            <h3>WebP Result</h3>
+            <p id="stats-webp" class="stats">Calculating...</p>
+            <a href="#" id="download-webp" class="download-button" download>Download .webp</a>
+          </div>
+          <div class="result-card">
+            <h3>JPEG Result</h3>
+            <p id="stats-jpeg" class="stats">Calculating...</p>
+            <a href="#" id="download-jpeg" class="download-button" download>Download .jpg</a>
+          </div>
+        </div>
+        <input type="file" id="file-input" accept="image/png, image/jpeg, image/webp">
+        <p>&copy; Johnny Heggelund</p>
+      </div>
+    </div>
+<script>
+
+const WEBP_INITIAL_QUALITY = 25;
+const JPEG_INITIAL_QUALITY = 30;
+const fileInput = document.getElementById('file-input');
+const uploadBox = document.getElementById('upload-box');
+const resultsGrid = document.getElementById('results-grid');
+const downloadWebp = document.getElementById('download-webp');
+const downloadJpeg = document.getElementById('download-jpeg');
+const statsWebp = document.getElementById('stats-webp');
+const statsJpeg = document.getElementById('stats-jpeg');
+const compressionControls = document.getElementById('compression-controls');
+const webpQualitySlider = document.getElementById('webp-quality-slider');
+const webpQualityValue = document.getElementById('webp-quality-value');
+const jpegQualitySlider = document.getElementById('jpeg-quality-slider');
+const jpegQualityValue = document.getElementById('jpeg-quality-value');
+const imageDisplayContainer = document.getElementById('image-display-container');
+const previewImage = document.getElementById('preview-image');
+const previewWebpRadio = document.getElementById('preview-webp');
+const previewJpegRadio = document.getElementById('preview-jpeg');
+const previewSettings = document.getElementById('preview-settings');
+const fitToScreenBtn = document.getElementById('fit-to-screen-btn');
+const originalSizeBtn = document.getElementById('original-size-btn');
+let currentFile = null;
+let originalImage = null;
+let originalWidth = 0;
+let originalHeight = 0;
+let originalSize = 0;
+let currentWebpQuality = WEBP_INITIAL_QUALITY;
+let currentJpegQuality = JPEG_INITIAL_QUALITY;
+let previewFormat = 'webp';
+webpQualitySlider.value = currentWebpQuality;
+webpQualityValue.textContent = `${currentWebpQuality}%`;
+jpegQualitySlider.value = currentJpegQuality;
+jpegQualityValue.textContent = `${currentJpegQuality}%`;
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function dataURLtoBlob(dataurl) {
+  const arr = dataurl.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], {
+    type: mime
+  });
+}
+
+function updateCompression() {
+  if (!originalImage) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = originalWidth;
+  canvas.height = originalHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, originalWidth, originalHeight);
+  ctx.drawImage(originalImage, 0, 0, originalWidth, originalHeight);
+  const webpDataURL = canvas.toDataURL('image/webp', currentWebpQuality / 100); // Quality needs to be 0-1
+  const webpSize = dataURLtoBlob(webpDataURL).size;
+  ctx.clearRect(0, 0, originalWidth, originalHeight);
+  const isPngOrWebp = originalImage.src.startsWith('data:image/png') || originalImage.src.startsWith('data:image/webp');
+  const isNotAlreadyJpeg = !originalImage.src.startsWith('data:image/jpeg');
+  if (isPngOrWebp && isNotAlreadyJpeg) {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, originalWidth, originalHeight);
+  }
+  ctx.drawImage(originalImage, 0, 0, originalWidth, originalHeight);
+  const jpegDataURL = canvas.toDataURL('image/jpeg', currentJpegQuality / 100); // Quality needs to be 0-1
+  const jpegSize = dataURLtoBlob(jpegDataURL).size;
+  const timestamp = Date.now();
+  const baseFilename = currentFile.name ? currentFile.name.substring(0, currentFile.name.lastIndexOf('.')) : 'image';
+  const uniqueFilename = `${baseFilename}-${timestamp}`;
+  downloadWebp.href = webpDataURL;
+  downloadWebp.download = `${uniqueFilename}-q${currentWebpQuality}.webp`;
+  statsWebp.innerHTML = `<strong>${originalWidth}x${originalHeight}</strong><br>${formatBytes(originalSize)} <span class="arrow">&rarr;</span> <strong>${formatBytes(webpSize)}</strong>`;
+  downloadJpeg.href = jpegDataURL;
+  downloadJpeg.download = `${uniqueFilename}-q${currentJpegQuality}.jpg`;
+  statsJpeg.innerHTML = `<strong>${originalWidth}x${originalHeight}</strong><br>${formatBytes(originalSize)} <span class="arrow">&rarr;</span> <strong>${formatBytes(jpegSize)}</strong>`;
+  if (previewFormat === 'webp') {
+    previewImage.src = webpDataURL;
+  } else {
+    previewImage.src = jpegDataURL;
+  }
+}
+
+function setPreviewSizeMode(mode) {
+  if (mode === 'fit') {
+    imageDisplayContainer.classList.remove('original-size-mode');
+    fitToScreenBtn.classList.add('active');
+    originalSizeBtn.classList.remove('active');
+  } else if (mode === 'original') {
+    imageDisplayContainer.classList.add('original-size-mode');
+    originalSizeBtn.classList.add('active');
+    fitToScreenBtn.classList.remove('active');
+  }
+}
+
+function processImage(fileOrBlob) {
+  if (!fileOrBlob) return;
+  currentFile = fileOrBlob;
+  const objectURL = URL.createObjectURL(fileOrBlob);
+  const img = new Image();
+  img.onload = () => {
+    originalImage = img;
+    originalWidth = img.naturalWidth;
+    originalHeight = img.naturalHeight;
+    originalSize = fileOrBlob.size;
+    webpQualitySlider.value = WEBP_INITIAL_QUALITY;
+    webpQualityValue.textContent = `${WEBP_INITIAL_QUALITY}%`;
+    jpegQualitySlider.value = JPEG_INITIAL_QUALITY;
+    jpegQualityValue.textContent = `${JPEG_INITIAL_QUALITY}%`;
+    currentWebpQuality = WEBP_INITIAL_QUALITY;
+    currentJpegQuality = JPEG_INITIAL_QUALITY;
+    previewWebpRadio.checked = true;
+    uploadBox.classList.add('hidden');
+    previewSettings.classList.remove('hidden');
+    compressionControls.classList.remove('hidden');
+    imageDisplayContainer.classList.remove('hidden');
+    resultsGrid.classList.remove('hidden');
+    setPreviewSizeMode('fit');
+    updateCompression();
+    URL.revokeObjectURL(objectURL);
+  };
+  img.onerror = () => {
+    alert("Could not load the image file. It may be corrupt.");
+    URL.revokeObjectURL(objectURL);
+    uploadBox.classList.remove('hidden');
+    previewSettings.classList.add('hidden');
+    compressionControls.classList.add('hidden');
+    imageDisplayContainer.classList.add('hidden');
+    resultsGrid.classList.add('hidden');
+  };
+  img.src = objectURL;
+}
+uploadBox.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (e) => processImage(e.target.files[0]));
+uploadBox.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadBox.classList.add('dragover');
+});
+uploadBox.addEventListener('dragleave', () => uploadBox.classList.remove('dragover'));
+uploadBox.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadBox.classList.remove('dragover');
+  if (e.dataTransfer.files.length > 0) {
+    processImage(e.dataTransfer.files[0]);
+  }
+});
+window.addEventListener('paste', e => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.includes('image')) {
+      processImage(item.getAsFile());
+      break;
+    }
+  }
+});
+webpQualitySlider.addEventListener('input', (e) => {
+  currentWebpQuality = parseInt(e.target.value);
+  webpQualityValue.textContent = `${currentWebpQuality}%`;
+  updateCompression();
+});
+jpegQualitySlider.addEventListener('input', (e) => {
+  currentJpegQuality = parseInt(e.target.value);
+  jpegQualityValue.textContent = `${currentJpegQuality}%`;
+  updateCompression();
+});
+previewWebpRadio.addEventListener('change', () => {
+  previewFormat = 'webp';
+  updateCompression();
+});
+previewJpegRadio.addEventListener('change', () => {
+  previewFormat = 'jpeg';
+  updateCompression();
+});
+fitToScreenBtn.addEventListener('click', () => setPreviewSizeMode('fit'));
+originalSizeBtn.addEventListener('click', () => setPreviewSizeMode('original'));
+
+</script>
+  </body>
+</html>
