@@ -15,6 +15,8 @@
       --toast-text-success: #fff;
       --toast-bg-error: #8b0000;
       --toast-text-error: #fff;
+      --toast-bg-help: #252526; 
+      --toast-text-help: #ccc;
     }
 
     * {
@@ -96,6 +98,7 @@
       transition: opacity 0.3s ease-in-out;
       z-index: 1000;
       box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      white-space: nowrap;
     }
     
     #toast.show {
@@ -106,12 +109,31 @@
       background-color: var(--toast-bg-success);
       color: var(--toast-text-success);
       border: 1px solid #444;
+      left: auto;
+      width: auto;
+      text-align: left;
     }
 
     #toast.error {
       background-color: var(--toast-bg-error);
       color: var(--toast-text-error);
       font-weight: bold;
+      left: auto;
+      width: auto;
+      text-align: left;
+    }
+
+    #toast.help {
+      background-color: var(--toast-bg-help);
+      color: var(--toast-text-help);
+      bottom: 0;
+      right: 0;
+      left: 0;
+      width: 100%;
+      border-radius: 0;
+      border-top: 1px solid #333;
+      text-align: center;
+      padding: 12px;
     }
   </style>
 </head>
@@ -145,23 +167,23 @@
       document.title = (isDirty ? '*' : '') + fileName;
     };
 
-    const showToast = (message, isError = false) => {
+    const showToast = (message, type = 'success', duration = 2000) => {
       toast.className = ''; 
       clearTimeout(toastTimeout);
 
       toast.textContent = message;
-      toast.classList.add(isError ? 'error' : 'success');
+      toast.classList.add(type);
       toast.classList.add('show');
 
       toastTimeout = setTimeout(() => {
         toast.classList.remove('show');
-      }, 2000);
+      }, duration);
     };
 
     const toggleWrap = () => {
       editor.classList.toggle('wrap');
       const isWrapped = editor.classList.contains('wrap');
-      showToast(`Line wrap: ${isWrapped ? 'ON' : 'OFF'}`, false);
+      showToast(`Line wrap: ${isWrapped ? 'ON' : 'OFF'}`, 'success', 2000);
     };
 
     const getFileContent = async (handle) => {
@@ -224,11 +246,11 @@
         originalContent = editor.value;
         fileName = fileHandle.name;
         updateTitle();
-        showToast('Saved ' + fileName, false);
+        showToast('Saved ' + fileName, 'success', 2000);
       } catch (err) {
         if (err.name !== 'AbortError') {
             console.error(err);
-            showToast('SAVING FAILED', true);
+            showToast('SAVING FAILED', 'error', 3000);
         }
       }
     };
@@ -242,8 +264,13 @@
       }
     };
 
+    const showHelp = () => {
+      const shortcuts = "Alt+O: Open  |  Alt+S: Save  |  Alt+Shift+S: Save As  |  Alt+N: New  |  Alt+T: New Tab  |  Alt+P: Preview  |  Alt+B: Wrap  |  Alt+H: Help";
+      showToast(shortcuts, 'help', 10000);
+    };
+
     window.addEventListener('keydown', async (e) => {
-      if (e.ctrlKey || e.metaKey) {
+      if (e.altKey) {
         switch (e.key.toLowerCase()) {
           case 'o':
             e.preventDefault();
@@ -269,6 +296,10 @@
             e.preventDefault();
             toggleWrap();
             break;
+          case 'h':
+            e.preventDefault();
+            showHelp();
+            break;
         }
       }
     });
@@ -291,6 +322,9 @@
     window.addEventListener('focus', regainFocus);
     window.addEventListener('pageshow', regainFocus);
     gutter.addEventListener('click', regainFocus);
+
+    showHelp();
+
   </script>
 </body>
 </html>
