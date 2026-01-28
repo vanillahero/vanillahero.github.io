@@ -7,7 +7,8 @@
 [RetroMaker](https://vanillahero.github.io/retromaker.html) |
 [ASCIImaker](https://vanillahero.github.io/image2ascii.html) |
 [VideoPlayer](https://vanillahero.github.io/videoplayer.html) |
-[Emojis](https://vanillahero.github.io/emojis.html)
+[Emojis](https://vanillahero.github.io/emojis.html)  |
+[SoundTracker](https://vanillahero.github.io/soundtracker.html)
 
 **Games:**
 [100Laps](https://vanillahero.github.io/100laps.html) |
