@@ -1,7 +1,8 @@
 **Tools:**
 [Edit](https://vanillahero.github.io/edit.html) |
 [imagAI](https://vanillahero.github.io/imagai.html) |
-[imagED](https://vanillahero.github.io/imaged.html)
+[imagED](https://vanillahero.github.io/imaged.html) |
+[VideoPlayer](https://vanillahero.github.io/videoplayer.html)
 
 **Games:**
 [100Laps](https://vanillahero.github.io/100laps.html) |
