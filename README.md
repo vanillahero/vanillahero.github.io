@@ -6,6 +6,7 @@
 **Games:**
 [100Laps](https://vanillahero.github.io/100laps.html) |
 [Adventure](https://vanillahero.github.io/adventure.html) |
+[AmeliaX](https://vanillahero.github.io/ameliax.html) |
 [Billiards](https://vanillahero.github.io/billiards.html) |
 [CityBuilder](https://vanillahero.github.io/citybuilder.html) |
 [Lander](https://vanillahero.github.io/lander.html) |
