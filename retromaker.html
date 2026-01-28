@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RetroMaker</title>
+<style>
+
+:root {
+  --bg-color: #1a1a1a;
+  --sidebar-bg: #252525;
+  --text-color: #eee;
+  --accent-color: #0077aa;
+  --accent-hover: #0088cc;
+  --success-color: #44aa44;
+  --border-color: #444;
+  --input-bg: #333;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: 'Segoe UI', 'Roboto', Helvetica, Arial, sans-serif;
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 320px;
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  overflow-y: auto;
+  flex-shrink: 0;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.sidebar h1 {
+  font-size: 1.2rem;
+  margin: 0 0 5px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #fff;
+  border-bottom: 2px solid var(--accent-color);
+  padding-bottom: 10px;
+}
+
+.sidebar small {
+  display: block;
+  color: #888;
+  font-size: 0.75rem;
+  margin-bottom: 20px;
+}
+
+.control-group {
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.control-group:last-of-type {
+  border-bottom: none;
+}
+
+label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #ccc;
+}
+
+.value-display {
+  color: var(--accent-color);
+}
+
+input[type="range"] {
+  width: 100%;
+  cursor: pointer;
+  height: 6px;
+  background: var(--input-bg);
+  border-radius: 3px;
+  -webkit-appearance: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--accent-color);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+select,
+input[type="file"] {
+  width: 100%;
+  padding: 8px;
+  background: var(--input-bg);
+  color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+input[type="file"] {
+  font-size: 0.8rem;
+}
+
+.btn-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: auto;
+}
+
+button {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: filter 0.2s;
+  font-size: 0.9rem;
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
+
+button.download {
+  background-color: var(--success-color);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+.stage {
+  flex: 1;
+  background-color: #111;
+  background-image:
+    linear-gradient(45deg, #181818 25%, transparent 25%),
+    linear-gradient(-45deg, #181818 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #181818 75%),
+    linear-gradient(-45deg, transparent 75%, #181818 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+}
+
+#canvas {
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.8));
+}
+
+#empty-state {
+  color: #555;
+  text-align: center;
+  font-family: monospace;
+}
+
+.checkbox-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.checkbox-control label {
+  margin-bottom: 0;
+  flex-grow: 1;
+  cursor: pointer;
+}
+
+.checkbox-control input[type="checkbox"] {
+  width: auto;
+  margin-left: 10px;
+  height: auto;
+  padding: 0;
+}
+
+</style>
+  </head>
+  <body>
+    <div class="sidebar">
+      <div>
+        <h1>RetroMaker</h1>
+        <p style="margin: 0; color: #606060;">&copy; Johnny Heggelund</p><br>
+      </div>
+      <div class="control-group">
+        <label>1. Upload Image</label>
+        <input type="file" id="upload" accept="image/*">
+      </div>
+      <div class="control-group">
+        <label>2. Resolution (Width)<span class="value-display" id="resValue">320px</span></label>
+        <input type="range" id="resolution" min="32" max="640" value="320" step="4">
+        <small style="margin-top:5px; margin-bottom:0;">Low = Abstract | High = Detailed</small>
+      </div>
+      <div class="control-group">
+        <label>3. Color Palette</label>
+        <select id="colorCount">
+          <option value="FULL">Full Color (Original)</option>
+          <option value="16">16 Colors (Retro Console)</option>
+          <option value="32" selected>32 Colors (Arne32)</option>
+          <option value="64">64 Colors (Extended)</option>
+          <option value="128">125 Colors (5x5x5 RGB)</option>
+          <option value="256">216 Colors (Web-Safe RGB)</option>
+          <option value="BW">Black & White (1-bit)</option>
+          <option value="GAMEBOY">Gameboy (4 Green)</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>4. Contrast <span class="value-display" id="contrastValue">100%</span></label>
+        <input type="range" id="contrast" min="0" max="200" value="100" step="1">
+        <small style="margin-top:5px; margin-bottom:0;">Adjusts image contrast before pixelation.</small>
+      </div>
+      <div class="control-group">
+        <label>5. Exposure <span class="value-display" id="exposureValue">100%</span></label>
+        <input type="range" id="exposure" min="50" max="200" value="100" step="1">
+        <small style="margin-top:5px; margin-bottom:0;">Adjusts image brightness before pixelation.</small>
+      </div>
+      <div class="control-group">
+        <label>6. Export Scale <span class="value-display" id="scaleValue">10x</span></label>
+        <input type="range" id="exportScale" min="1" max="20" value="10" step="1">
+        <small style="margin-top:5px; margin-bottom:0;">Affects download only.</small>
+      </div>
+      <div class="control-group">
+        <div class="checkbox-control">
+          <label for="ditheringEnabled">7. Enable Dithering</label>
+          <input type="checkbox" id="ditheringEnabled">
+        </div>
+        <small style="margin-top:5px; margin-bottom:0;">Applies Floyd-Steinberg dithering for smoother color transitions.</small>
+      </div>
+      <div class="btn-group">
+        <button onclick="processImage()">Convert</button>
+        <button class="download" onclick="downloadImage()">Download</button>
+      </div>
+    </div>
+    <div class="stage">
+      <div id="empty-state">
+        Upload an image to start<br>
+        [No image selected]
+      </div>
+      <canvas id="canvas" style="display:none;"></canvas>
+    </div>
+<script>
+
+const PALETTE_16 = [
+  [0, 0, 0],
+  [29, 43, 83],
+  [126, 37, 83],
+  [0, 135, 81],
+  [171, 82, 54],
+  [95, 87, 79],
+  [194, 195, 199],
+  [255, 241, 232],
+  [255, 0, 77],
+  [255, 163, 0],
+  [255, 236, 39],
+  [0, 228, 54],
+  [41, 173, 255],
+  [131, 118, 156],
+  [255, 119, 168],
+  [255, 204, 170]
+];
+const PALETTE_32 = [
+  [0, 0, 0],
+  [255, 255, 255],
+  [157, 157, 157],
+  [190, 38, 51],
+  [224, 111, 139],
+  [73, 60, 43],
+  [164, 100, 34],
+  [235, 137, 49],
+  [247, 226, 107],
+  [47, 72, 78],
+  [68, 137, 26],
+  [163, 206, 39],
+  [27, 38, 50],
+  [0, 87, 132],
+  [49, 162, 242],
+  [178, 220, 239],
+  [52, 42, 151],
+  [101, 109, 113],
+  [204, 204, 204],
+  [115, 41, 48],
+  [203, 78, 80],
+  [128, 50, 50],
+  [255, 119, 168],
+  [142, 63, 23],
+  [242, 172, 88],
+  [255, 205, 117],
+  [163, 110, 205],
+  [55, 21, 133],
+  [81, 18, 124],
+  [146, 35, 137],
+  [228, 70, 207],
+  [0, 135, 81]
+];
+const PALETTE_64 = [
+  [6, 6, 8],
+  [20, 16, 19],
+  [59, 23, 37],
+  [115, 23, 45],
+  [180, 23, 30],
+  [228, 59, 68],
+  [244, 126, 123],
+  [255, 214, 204],
+  [156, 156, 156],
+  [107, 107, 107],
+  [57, 57, 57],
+  [116, 63, 57],
+  [185, 117, 99],
+  [232, 168, 136],
+  [247, 211, 194],
+  [94, 77, 69],
+  [54, 44, 38],
+  [26, 20, 20],
+  [20, 38, 56],
+  [18, 78, 137],
+  [38, 133, 186],
+  [94, 188, 214],
+  [174, 226, 227],
+  [139, 172, 15],
+  [75, 105, 47],
+  [50, 60, 57],
+  [25, 31, 29],
+  [32, 46, 55],
+  [58, 80, 67],
+  [90, 128, 96],
+  [147, 183, 100],
+  [211, 230, 123],
+  [229, 184, 188],
+  [191, 121, 118],
+  [142, 65, 71],
+  [86, 21, 40],
+  [44, 12, 24],
+  [32, 40, 61],
+  [58, 68, 102],
+  [90, 105, 136],
+  [139, 155, 180],
+  [194, 211, 228],
+  [255, 255, 255],
+  [218, 224, 232],
+  [159, 174, 191],
+  [107, 118, 137],
+  [63, 61, 86],
+  [32, 23, 39],
+  [25, 16, 25],
+  [60, 32, 48],
+  [104, 56, 108],
+  [162, 109, 164],
+  [213, 170, 219],
+  [245, 230, 245],
+  [20, 68, 102],
+  [42, 109, 122],
+  [123, 178, 78],
+  [246, 214, 59],
+  [237, 143, 33],
+  [196, 73, 33],
+  [117, 36, 56],
+  [223, 132, 165],
+  [154, 79, 80],
+  [101, 42, 76]
+];
+const PALETTE_BW = [
+  [0, 0, 0],
+  [255, 255, 255]
+];
+const PALETTE_GAMEBOY = [
+  [15, 56, 15],
+  [48, 98, 48],
+  [139, 172, 15],
+  [155, 188, 15]
+];
+const PALETTE_128 = [];
+const steps128 = [0, 63, 127, 191, 255];
+for (let r of steps128) {
+  for (let g of steps128) {
+    for (let b of steps128) {
+      PALETTE_128.push([r, g, b]);
+    }
+  }
+}
+const PALETTE_256 = [];
+const steps256 = [0, 51, 102, 153, 204, 255];
+for (let r of steps256) {
+  for (let g of steps256) {
+    for (let b of steps256) {
+      PALETTE_256.push([r, g, b]);
+    }
+  }
+}
+const fileInput = document.getElementById('upload');
+const resInput = document.getElementById('resolution');
+const resValue = document.getElementById('resValue');
+const colorSelect = document.getElementById('colorCount');
+const contrastInput = document.getElementById('contrast');
+const contrastValue = document.getElementById('contrastValue');
+const exposureInput = document.getElementById('exposure');
+const exposureValue = document.getElementById('exposureValue');
+const exportScaleInput = document.getElementById('exportScale');
+const scaleValue = document.getElementById('scaleValue');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const emptyState = document.getElementById('empty-state');
+const ditheringCheckbox = document.getElementById('ditheringEnabled');
+let originalImage = null;
+resInput.addEventListener('input', (e) => resValue.innerText = e.target.value + 'px');
+contrastInput.addEventListener('input', (e) => contrastValue.innerText = e.target.value + '%');
+exposureInput.addEventListener('input', (e) => exposureValue.innerText = e.target.value + '%');
+exportScaleInput.addEventListener('input', (e) => scaleValue.innerText = e.target.value + 'x');
+resInput.addEventListener('change', () => {
+  if (originalImage) processImage();
+});
+colorSelect.addEventListener('change', () => {
+  if (originalImage) processImage();
+});
+contrastInput.addEventListener('change', () => {
+  if (originalImage) processImage();
+});
+exposureInput.addEventListener('change', () => {
+  if (originalImage) processImage();
+});
+ditheringCheckbox.addEventListener('change', () => {
+  if (originalImage) processImage();
+});
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const img = new Image();
+    img.onload = () => {
+      originalImage = img;
+      emptyState.style.display = 'none';
+      canvas.style.display = 'block';
+      processImage();
+    };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+function getPalette() {
+  const val = colorSelect.value;
+  if (val === 'FULL') return null;
+  if (val === '16') return PALETTE_16;
+  if (val === '64') return PALETTE_64;
+  if (val === '128') return PALETTE_128;
+  if (val === '256') return PALETTE_256;
+  if (val === 'BW') return PALETTE_BW;
+  if (val === 'GAMEBOY') return PALETTE_GAMEBOY;
+  return PALETTE_32;
+}
+
+function findNearestColor(r, g, b, palette) {
+  let minDist = Infinity;
+  let color = palette[0];
+  for (let i = 0; i < palette.length; i++) {
+    const p = palette[i];
+    const dist = (r - p[0]) ** 2 + (g - p[1]) ** 2 + (b - p[2]) ** 2;
+    if (dist < minDist) {
+      minDist = dist;
+      color = p;
+    }
+  }
+  return color;
+}
+
+function processImage() {
+  if (!originalImage) return;
+  const targetWidth = parseInt(resInput.value);
+  const scaleFactor = originalImage.width / targetWidth;
+  const targetHeight = Math.floor(originalImage.height / scaleFactor);
+  const tempCanvas = document.createElement('canvas');
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCanvas.width = targetWidth;
+  tempCanvas.height = targetHeight;
+  tempCtx.drawImage(originalImage, 0, 0, targetWidth, targetHeight);
+  const originalImageData = tempCtx.getImageData(0, 0, targetWidth, targetHeight);
+  const originalPixels = originalImageData.data;
+  const currentPalette = getPalette();
+  const contrastFactor = parseFloat(contrastInput.value) / 100;
+  const exposureFactor = parseFloat(exposureInput.value) / 100;
+  const useDithering = ditheringCheckbox.checked && currentPalette !== null;
+  const pixelWorkingBuffer = new Float32Array(targetWidth * targetHeight * 3);
+  const outputData = new Uint8ClampedArray(originalPixels.length);
+  for (let i = 0; i < originalPixels.length; i += 4) {
+    const pixelBufferIndex = (i / 4) * 3;
+    let r_val = originalPixels[i];
+    let g_val = originalPixels[i + 1];
+    let b_val = originalPixels[i + 2];
+    const a_val = originalPixels[i + 3];
+    r_val *= exposureFactor;
+    g_val *= exposureFactor;
+    b_val *= exposureFactor;
+    r_val = (r_val - 128) * contrastFactor + 128;
+    g_val = (g_val - 128) * contrastFactor + 128;
+    b_val = (b_val - 128) * contrastFactor + 128;
+    pixelWorkingBuffer[pixelBufferIndex] = r_val;
+    pixelWorkingBuffer[pixelBufferIndex + 1] = g_val;
+    pixelWorkingBuffer[pixelBufferIndex + 2] = b_val;
+    outputData[i + 3] = a_val;
+  }
+  for (let y = 0; y < targetHeight; y++) {
+    for (let x = 0; x < targetWidth; x++) {
+      const bufferIndex = (y * targetWidth + x) * 3;
+      const dataIndex = (y * targetWidth + x) * 4;
+      let r_current = pixelWorkingBuffer[bufferIndex];
+      let g_current = pixelWorkingBuffer[bufferIndex + 1];
+      let b_current = pixelWorkingBuffer[bufferIndex + 2];
+      r_current = Math.min(255, Math.max(0, r_current));
+      g_current = Math.min(255, Math.max(0, g_current));
+      b_current = Math.min(255, Math.max(0, b_current));
+      if (outputData[dataIndex + 3] === 0) {
+        outputData[dataIndex] = 0;
+        outputData[dataIndex + 1] = 0;
+        outputData[dataIndex + 2] = 0;
+        continue;
+      }
+      if (currentPalette !== null) {
+        const nearestColor = findNearestColor(r_current, g_current, b_current, currentPalette);
+        const errorR = r_current - nearestColor[0];
+        const errorG = g_current - nearestColor[1];
+        const errorB = b_current - nearestColor[2];
+        outputData[dataIndex] = nearestColor[0];
+        outputData[dataIndex + 1] = nearestColor[1];
+        outputData[dataIndex + 2] = nearestColor[2];
+        if (useDithering) {
+          const diffuseError = (nx, ny, weight) => {
+            if (nx >= 0 && nx < targetWidth && ny < targetHeight) {
+              const neighborBufferIndex = (ny * targetWidth + nx) * 3;
+              pixelWorkingBuffer[neighborBufferIndex] += errorR * weight;
+              pixelWorkingBuffer[neighborBufferIndex + 1] += errorG * weight;
+              pixelWorkingBuffer[neighborBufferIndex + 2] += errorB * weight;
+            }
+          };
+          diffuseError(x + 1, y, 7 / 16); // Right
+          diffuseError(x - 1, y + 1, 3 / 16); // Bottom-Left
+          diffuseError(x, y + 1, 5 / 16); // Bottom
+          diffuseError(x + 1, y + 1, 1 / 16); // Bottom-Right
+        }
+      } else {
+        outputData[dataIndex] = Math.round(r_current);
+        outputData[dataIndex + 1] = Math.round(g_current);
+        outputData[dataIndex + 2] = Math.round(b_current);
+      }
+    }
+  }
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  ctx.putImageData(new ImageData(outputData, targetWidth, targetHeight), 0, 0);
+}
+
+function downloadImage() {
+  if (!originalImage) return;
+  const scale = parseInt(exportScaleInput.value);
+  const finalWidth = canvas.width * scale;
+  const finalHeight = canvas.height * scale;
+  const exportCanvas = document.createElement('canvas');
+  exportCanvas.width = finalWidth;
+  exportCanvas.height = finalHeight;
+  const eCtx = exportCanvas.getContext('2d');
+  eCtx.imageSmoothingEnabled = false;
+  eCtx.drawImage(canvas, 0, 0, finalWidth, finalHeight);
+  const link = document.createElement('a');
+  link.download = `pixelart-${canvas.width}x${canvas.height}-x${scale}.png`;
+  link.href = exportCanvas.toDataURL();
+  link.click();
+}
+
+</script>
+  </body>
+</html>
