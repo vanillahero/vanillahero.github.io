@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit</title>
+  <style>
+    :root {
+      --bg-color: #1e1e1e;
+      --gutter-color: #171717;
+      --text-color: #d4d4d4;
+      --caret-color: #aeafad;
+      --gutter-width: 24px;
+      /* Farger for Toast */
+      --toast-bg-success: #2d2d2d;
+      --toast-text-success: #fff;
+      --toast-bg-error: #8b0000;
+      --toast-text-error: #fff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background-color: var(--gutter-color);
+      overflow: hidden;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    #container {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+
+    #gutter {
+      width: var(--gutter-width);
+      background-color: var(--gutter-color);
+      flex-shrink: 0;
+      border-right: 1px solid #252525;
+    }
+
+    #editor {
+      flex-grow: 1;
+      height: 100%;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      border: none;
+      outline: none;
+      resize: none;
+      font-size: 16px;
+      line-height: 1.5;
+      padding: 20px 20px 20px 8px;
+      caret-color: var(--caret-color);
+      white-space: pre;
+      overflow: auto;
+    }
+
+    #editor::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+
+    #editor::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 6px;
+      border: 2px solid var(--bg-color);
+    }
+
+    #editor::-webkit-scrollbar-track {
+      background: var(--bg-color);
+    }
+
+    #editor::-webkit-scrollbar-corner {
+        background: var(--bg-color);
+    }
+
+    /* --- TOAST STYLES --- */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      opacity: 0;
+      pointer-events: none; /* Klikk går igjennom når usynlig */
+      transition: opacity 0.3s ease-in-out;
+      z-index: 1000;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    
+    #toast.show {
+      opacity: 1;
+    }
+
+    #toast.success {
+      background-color: var(--toast-bg-success);
+      color: var(--toast-text-success);
+      border: 1px solid #444;
+    }
+
+    #toast.error {
+      background-color: var(--toast-bg-error);
+      color: var(--toast-text-error);
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="gutter"></div>
+    <textarea id="editor" spellcheck="false" autofocus></textarea>
+  </div>
+  
+  <div id="toast"></div>
+
+  <script>
+    const editor = document.getElementById('editor');
+    const gutter = document.getElementById('gutter');
+    const toast = document.getElementById('toast');
+    
+    let fileHandle = null;
+    let originalContent = '';
+    let fileName = 'Untitled';
+    let toastTimeout;
+    const SNAP_THRESHOLD = 5;
+
+    editor.addEventListener('scroll', () => {
+      if (editor.scrollLeft > 0 && editor.scrollLeft < SNAP_THRESHOLD) {
+        editor.scrollLeft = 0;
+      }
+    });
+
+    const updateTitle = () => {
+      const isDirty = editor.value !== originalContent;
+      document.title = (isDirty ? '*' : '') + fileName;
+    };
+
+    const showToast = (message, isError = false) => {
+      // Fjern gamle klasser og reset
+      toast.className = ''; 
+      clearTimeout(toastTimeout);
+
+      toast.textContent = message;
+      toast.classList.add(isError ? 'error' : 'success');
+      toast.classList.add('show');
+
+      // Skjul etter 2 sekunder
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2000);
+    };
+
+    const getFileContent = async (handle) => {
+      const file = await handle.getFile();
+      return await file.text();
+    };
+
+    const newFile = async () => {
+      if (editor.value !== originalContent) {
+        if (!confirm('You have unsaved changes. Discard them?')) return;
+      }
+      editor.value = '';
+      originalContent = '';
+      fileHandle = null;
+      fileName = 'Untitled';
+      updateTitle();
+      editor.focus();
+      editor.scrollLeft = 0;
+    };
+
+    const openFile = async () => {
+      if (editor.value !== originalContent) {
+        if (!confirm('You have unsaved changes. Discard them?')) return;
+      }
+      try {
+        [fileHandle] = await window.showOpenFilePicker({
+          types: [{
+            description: 'Code Files',
+            accept: {
+              'text/plain': ['.html', '.css', '.js', '.txt', '.json', '.md']
+            }
+          }]
+        });
+        const content = await getFileContent(fileHandle);
+        editor.value = content;
+        originalContent = content;
+        fileName = fileHandle.name;
+        updateTitle();
+        editor.scrollLeft = 0;
+      } catch (err) {
+        // Avbrutt av bruker, ingen handling nødvendig
+      }
+    };
+
+    const saveFile = async (saveAs = false) => {
+      try {
+        if (!fileHandle || saveAs) {
+          fileHandle = await window.showSaveFilePicker({
+            suggestedName: fileName,
+            types: [{
+              description: 'Code Files',
+              accept: {
+                'text/plain': ['.html', '.css', '.js', '.txt']
+              }
+            }]
+          });
+        }
+        const writable = await fileHandle.createWritable();
+        await writable.write(editor.value);
+        await writable.close();
+        
+        originalContent = editor.value;
+        fileName = fileHandle.name;
+        updateTitle();
+        
+        // Vis suksess-toast
+        showToast('Saved ' + fileName, false);
+        
+      } catch (err) {
+        // Hvis brukeren avbryter dialogen, kaster nettleseren en AbortError.
+        // Vi viser bare feilmelding hvis det faktisk gikk galt, ikke hvis brukeren avbrøt.
+        if (err.name !== 'AbortError') {
+            console.error(err);
+            showToast('SAVING FAILED', true);
+        }
+      }
+    };
+
+    const previewFile = () => {
+      const win = window.open('', '_blank');
+      if (win) {
+        win.document.open();
+        win.document.write(editor.value);
+        win.document.close();
+      }
+    };
+
+    window.addEventListener('keydown', async (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 'o':
+            e.preventDefault();
+            await openFile();
+            break;
+          case 's':
+            e.preventDefault();
+            await saveFile(e.shiftKey);
+            break;
+          case 'n':
+            e.preventDefault();
+            await newFile();
+            break;
+          case 't':
+            e.preventDefault();
+            window.open(window.location.href, '_blank');
+            break;
+          case 'p':
+            e.preventDefault();
+            previewFile();
+            break;
+        }
+      }
+    });
+
+    editor.addEventListener('input', () => {
+      updateTitle();
+    });
+
+    window.addEventListener('beforeunload', (e) => {
+      if (editor.value !== originalContent) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+
+    const regainFocus = () => {
+      setTimeout(() => editor.focus(), 10);
+    }
+
+    window.addEventListener('focus', regainFocus);
+    window.addEventListener('pageshow', regainFocus);
+    gutter.addEventListener('click', regainFocus);
+  </script>
+</body>
+</html>
