@@ -11,5 +11,6 @@
 [Billiards](https://vanillahero.github.io/billiards.html) |
 [CityBuilder](https://vanillahero.github.io/citybuilder.html) |
 [Lander](https://vanillahero.github.io/lander.html) |
+[Shithead](https://vanillahero.github.io/shithead.html) |
 [Sokoban](https://vanillahero.github.io/sokoban.html) |
 [Uno](https://vanillahero.github.io/uno.html)
