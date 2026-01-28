@@ -1,1 +1,0 @@
-&copy; Johnny Heggelund
