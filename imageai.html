@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1e1e1e">
+    <title>AI Image</title>
+<style>
+
+@font-face {
+  font-family: sans-serif;
+}
+
+:root {
+  --bg-color-dark: #1e1e1e;
+  --bg-color-medium: #252526;
+  --bg-color-light: #333;
+  --text-color: #d4d4d4;
+  --text-color-light: #ccc;
+  --text-color-hint: #888;
+  --primary-btn-bg: #4fc1ff;
+  --primary-btn-text: #1e1e1e;
+  --primary-btn-hover: #7cd1ff;
+  --secondary-btn-bg: #555;
+  --secondary-btn-text: #d4d4d4;
+  --secondary-btn-hover: #777;
+  --success-btn-bg: #2da042;
+  --success-btn-hover: #3fb950;
+  --danger-btn-bg: #cc2a2a;
+  --danger-btn-hover: #e03a3a;
+  --border-color: #444;
+  --input-bg: #222;
+  --input-border: #444;
+  --input-focus-border: #007acc;
+  --font-family: 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+  --canvas-bg: #0a0807;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  background-color: var(--bg-color-dark);
+  color: var(--text-color);
+  overflow: hidden;
+  display: flex;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+#app-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+#controls-sidebar {
+  flex: 0 0 450px;
+  background-color: var(--bg-color-medium);
+  border-right: 1px solid var(--border-color);
+  padding: 20px 25px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-title {
+  color: var(--primary-btn-bg);
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.8em;
+  text-shadow: 0 0 10px rgba(79, 193, 255, 0.2);
+}
+
+.app-description {
+  font-size: 0.9em;
+  color: var(--text-color-light);
+  line-height: 1.5;
+  margin-bottom: 25px;
+}
+
+.app-description a {
+  color: var(--primary-btn-bg);
+  text-decoration: none;
+  font-weight: bold;
+  border-bottom: 1px dashed var(--primary-btn-bg);
+}
+
+.control-group {
+  margin-bottom: 20px;
+}
+
+.control-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.9em;
+  color: var(--text-color);
+  font-weight: bold;
+}
+
+.control-group input[type="text"],
+.control-group textarea,
+.control-group select {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-family: var(--font-family);
+  font-size: 0.9em;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.control-group input[type="text"]:focus,
+.control-group textarea:focus,
+.control-group select:focus {
+  border-color: var(--input-focus-border);
+}
+
+.control-group textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.input-hint {
+  font-size: 0.75em;
+  color: var(--text-color-hint);
+  margin-top: 5px;
+  line-height: 1.4;
+}
+
+button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.9em;
+  transition: background-color 0.2s, color 0.2s, opacity 0.2s;
+  outline: none;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.primary-btn {
+  background-color: var(--primary-btn-bg);
+  color: var(--primary-btn-text);
+}
+
+.primary-btn:not(:disabled):hover {
+  background-color: var(--primary-btn-hover);
+}
+
+.secondary-btn {
+  background-color: var(--secondary-btn-bg);
+  color: var(--secondary-btn-text);
+}
+
+.secondary-btn:not(:disabled):hover {
+  background-color: var(--secondary-btn-hover);
+}
+
+.success-btn {
+  background-color: var(--success-btn-bg);
+  color: white;
+}
+
+.success-btn:not(:disabled):hover {
+  background-color: var(--success-btn-hover);
+}
+
+.danger-btn {
+  background-color: var(--danger-btn-bg);
+  color: white;
+}
+
+.danger-btn:not(:disabled):hover {
+  background-color: var(--danger-btn-hover);
+}
+
+.status-msg {
+  margin-top: 20px;
+  font-size: 0.85em;
+  color: var(--text-color-light);
+  min-height: 1.5em;
+}
+
+#image-display-area {
+  flex: 1;
+  min-width: 768px;
+  background-color: var(--canvas-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+
+#generated-image-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: calc(100% - 80px);
+  max-height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background-color: #1a1a1a;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+#image-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+  background-color: #333;
+}
+
+#image-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+#image-actions button {
+  margin-right: 0;
+}
+
+#crop-tools {
+  display: flex;
+  gap: 5px;
+  margin-left: 10px;
+  border-left: 1px solid var(--border-color);
+  padding-left: 10px;
+}
+
+#crop-tools button {
+  background-color: var(--bg-color-light);
+  color: var(--text-color-light);
+  padding: 8px 12px;
+  font-size: 0.85em;
+}
+
+#crop-tools button:hover:not(:disabled) {
+  background-color: #555;
+}
+
+#crop-tools button.active {
+  background-color: var(--input-focus-border);
+  color: white;
+}
+
+#ai-loading-toast {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(30, 30, 30, 0.95);
+  border: 1px solid var(--primary-btn-bg);
+  box-shadow: 0 0 30px rgba(79, 193, 255, 0.25);
+  padding: 20px 40px;
+  border-radius: 12px;
+  z-index: 20000;
+  text-align: center;
+  display: none;
+  backdrop-filter: blur(5px);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+#ai-loading-toast .brain-icon {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 10px;
+  animation: brainPulse 1.5s infinite ease-in-out;
+}
+
+#ai-loading-toast .loading-text {
+  font-size: 16px;
+  color: #fff;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+@keyframes brainPulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    text-shadow: 0 0 0 rgba(197, 134, 192, 0);
+  }
+
+  50% {
+    transform: scale(1.15);
+    opacity: 0.8;
+    text-shadow: 0 0 20px rgba(79, 193, 255, 0.8);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    text-shadow: 0 0 0 rgba(197, 134, 192, 0);
+  }
+}
+
+@keyframes popIn {
+  from {
+    transform: translate(-50%, -40%) scale(0.8);
+    opacity: 0;
+  }
+
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+#crop-overlay {
+  position: absolute;
+  cursor: crosshair;
+  display: none;
+}
+
+.crop-box {
+  position: absolute;
+  border: 2px dashed #4fc1ff;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+.crop-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: white;
+  border: 1px solid #4fc1ff;
+  z-index: 11;
+  box-sizing: border-box;
+}
+
+.crop-handle.top-left {
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize;
+}
+
+.crop-handle.top-right {
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize;
+}
+
+.crop-handle.bottom-left {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
+}
+
+.crop-handle.bottom-right {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
+}
+
+.crop-handle.top-center {
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+
+.crop-handle.bottom-center {
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+
+.crop-handle.left-center {
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+
+.crop-handle.right-center {
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+
+#controls-sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+#controls-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#controls-sidebar::-webkit-scrollbar-thumb {
+  background-color: #424242;
+  border-radius: 4px;
+}
+
+#controls-sidebar::-webkit-scrollbar-thumb:hover {
+  background-color: #5a5a5a;
+}
+
+#crop-toggle-btn {
+  background-color: var(--success-btn-bg);
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.9em;
+  transition: background-color 0.2s, color 0.2s, opacity 0.2s;
+  outline: none;
+}
+
+#crop-toggle-btn:not(:disabled):hover {
+  background-color: var(--success-btn-hover);
+}
+
+#controls-sidebar .control-group select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%3E%3Cpath%20fill%3D%22%23d4d4d4%22%20d%3D%22M7%2010l5%205%205-5z%22%2F%3E%3C%2Fsvg%3E'), linear-gradient(to bottom, var(--input-bg) 0%, var(--input-bg) 100%);
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 24px 24px;
+  padding-right: 36px;
+}
+
+</style>
+  </head>
+  <body>
+    <div id="ai-loading-toast">
+      <span class="brain-icon">🧠</span>
+      <div class="loading-text" id="ai-loading-msg">Generating image, please wait...</div>
+    </div>
+    <div id="app-container">
+      <div id="controls-sidebar">
+        <h1 class="app-title">AI Image Generator</h1>
+        <div class="control-group">
+          <label for="image-gen-prompt">Image Prompt</label>
+          <textarea id="image-gen-prompt" rows="5" placeholder="Beautiful nature scenery"></textarea>
+        </div>
+        <div class="control-group">
+          <label for="prompt-modifiers">Prompt Modifiers</label>
+          <select id="prompt-modifiers">
+            <option value="">Add Modifier...</option>
+            <optgroup label="Image Quality & Detail">
+              <option value="masterpiece">masterpiece</option>
+              <option value="best quality">best quality</option>
+              <option value="high resolution">high resolution</option>
+              <option value="8k, uhd">8k, uhd</option>
+              <option value="hyperdetailed">hyperdetailed</option>
+              <option value="highly detailed, intricate">highly detailed, intricate</option>
+              <option value="sharp focus">sharp focus</option>
+              <option value="ultra detailed">ultra detailed</option>
+              <option value="smooth, clean rendering">smooth, clean rendering</option>
+            </optgroup>
+            <optgroup label="Composition & Perspective">
+              <option value="close-up">close-up</option>
+              <option value="looking at camera">looking at camera</option>
+              <option value="epic scene">epic scene</option>
+              <option value="wide shot">wide shot</option>
+              <option value="full shot">full shot</option>
+              <option value="medium shot">medium shot</option>
+            </optgroup>
+            <optgroup label="Lighting & Atmosphere">
+              <option value="cinematic lighting">cinematic lighting</option>
+              <option value="studio lighting">studio lighting</option>
+              <option value="dramatic lighting">dramatic lighting</option>
+              <option value="volumetric lighting">volumetric lighting</option>
+              <option value="golden hour">golden hour</option>
+              <option value="blue hour">blue hour</option>
+              <option value="backlight">backlight</option>
+              <option value="rim light">rim light</option>
+              <option value="soft light">soft light</option>
+              <option value="dark, moody">dark, moody</option>
+              <option value="bright, cheerful">bright, cheerful</option>
+              <option value="vibrant colors">vibrant colors</option>
+              <option value="dreamy atmosphere">dreamy atmosphere</option>
+              <option value="mystical, ethereal">mystical, ethereal</option>
+              <option value="fog, misty">fog, misty</option>
+            </optgroup>
+            <optgroup label="Artistic Styles / Mediums">
+              <option value="photorealistic">photorealistic</option>
+              <option value="hyperrealism">hyperrealism</option>
+              <option value="digital painting">digital painting</option>
+              <option value="concept art">concept art</option>
+              <option value="matte painting">matte painting</option>
+              <option value="painted anime style">painted anime style</option>
+              <option value="3d cartoon style">3d cartoon style</option>
+              <option value="disney drawing style">disney drawing style</option>
+              <option value="3d emoji">3d emoji</option>
+              <option value="sketch drawing">sketch drawing</option>
+              <option value="oil painting">oil painting</option>
+              <option value="water painting">water painting</option>
+              <option value="ink drawing">ink drawing</option>
+              <option value="charcoal sketch">charcoal sketch</option>
+              <option value="pixel art">pixel art</option>
+              <option value="low poly">low poly</option>
+            </optgroup>
+            <optgroup label="Photography Effects">
+              <option value="bokeh">bokeh</option>
+              <option value="depth of field">depth of field</option>
+              <option value="fisheye lens">fisheye lens</option>
+            </optgroup>
+            <optgroup label="Render Engines / General Improvements">
+              <option value="award-winning photo">award-winning photo</option>
+              <option value="trending on ArtStation">trending on ArtStation</option>
+              <option value="Unreal Engine">Unreal Engine</option>
+              <option value="octane render">octane render</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="image-gen-model">AI Model <small style="color: #606060;"><i>the models have different strengths</i></small></label>
+          <select id="image-gen-model"></select>
+        </div>
+        <button id="image-gen-generate-btn" class="primary-btn">Generate Image</button>
+        <div id="status-message" class="status-msg">Ready to generate.</div>
+        <p style="color: #606060;">&copy; Johnny Heggelund</p>
+      </div>
+      <div id="image-display-area">
+        <div id="generated-image-container">
+          <canvas id="image-canvas"></canvas>
+          <div id="crop-overlay" style="display: none;">
+            <div class="crop-handle top-left"></div>
+            <div class="crop-handle top-right"></div>
+            <div class="crop-handle bottom-left"></div>
+            <div class="crop-handle bottom-right"></div>
+            <div class="crop-handle top-center"></div>
+            <div class="crop-handle bottom-center"></div>
+            <div class="crop-handle left-center"></div>
+            <div class="crop-handle right-center"></div>
+            <div class="crop-box"></div>
+          </div>
+        </div>
+        <div id="image-actions">
+          <button id="crop-toggle-btn" class="secondary-btn" disabled>Crop Image</button>
+          <div id="crop-tools" style="display: none;">
+            <button data-aspect="free">Free</button>
+            <button data-aspect="1:1">Square</button>
+            <button data-aspect="4:3">4:3</button>
+            <button data-aspect="16:9">16:9</button>
+            <button id="apply-crop-btn" class="success-btn">Apply Crop</button>
+            <button id="cancel-crop-btn" class="danger-btn">Cancel</button>
+          </div>
+          <button id="download-image-btn" class="primary-btn" disabled>Download Image</button>
+        </div>
+      </div>
+    </div>
+<script>
+
+"use strict";
+
+class ImageGeneratorApp {
+  constructor() {
+    this.promptInput = document.getElementById('image-gen-prompt');
+    this.modelSelect = document.getElementById('image-gen-model');
+    this.promptModifiersSelect = document.getElementById('prompt-modifiers');
+    this.generateBtn = document.getElementById('image-gen-generate-btn');
+    this.statusMessageDiv = document.getElementById('status-message');
+    this.downloadImageBtn = document.getElementById('download-image-btn');
+    this.cropToggleButton = document.getElementById('crop-toggle-btn');
+    this.cropToolsDiv = document.getElementById('crop-tools');
+    this.applyCropBtn = document.getElementById('apply-crop-btn');
+    this.cancelCropBtn = document.getElementById('cancel-crop-btn');
+    this.cropOverlay = document.getElementById('crop-overlay');
+    this.cropBox = this.cropOverlay.querySelector('.crop-box');
+    this.imageContainer = document.getElementById('generated-image-container');
+    this.canvas = document.getElementById('image-canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.originalImage = null;
+    this.currentImageBlob = null;
+    this.settings = {
+      prompt: 'a beautiful landscape, detailed, high resolution, cinematic light',
+      model: null
+    };
+    this.availableModels = [];
+    this.isCropping = false;
+    this.cropRect = {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0
+    };
+    this.dragMode = null;
+    this.dragStart = {
+      x: 0,
+      y: 0
+    };
+    this.initialCropRect = {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0
+    };
+    this.activeAspectRatio = 'free';
+    this.loadSettings();
+    this.initEventListeners();
+    this._fetchAndPopulateModels();
+    this._updateActionButtons();
+    this._displayStatus("Ready to generate.");
+  }
+
+  initEventListeners() {
+    this.generateBtn.onclick = () => this.generateImage();
+    this.promptInput.addEventListener('change', () => this.saveSettings());
+    this.modelSelect.addEventListener('change', () => this.saveSettings());
+    this.promptModifiersSelect.addEventListener('change', () => this._addModifierToPrompt());
+    this.downloadImageBtn.onclick = () => this.downloadImage();
+    this.cropToggleButton.onclick = () => this.toggleCropMode();
+    this.applyCropBtn.onclick = () => this.applyCrop();
+    this.cancelCropBtn.onclick = () => this.cancelCrop();
+    this.cropToolsDiv.querySelectorAll('button').forEach(button => {
+      if (button.dataset.aspect) {
+        button.onclick = () => this.setAspectRatio(button.dataset.aspect);
+      }
+    });
+    this.cropOverlay.addEventListener('mousedown', (e) => this.handleCropMouseDown(e));
+    this.cropOverlay.addEventListener('mousemove', (e) => this.handleCropMouseMove(e));
+    this.cropOverlay.addEventListener('mouseup', (e) => this.handleCropMouseUp(e));
+    this.cropOverlay.addEventListener('mouseleave', (e) => this.handleCropMouseUp(e));
+    window.addEventListener('resize', () => {
+      if (this.originalImage) {
+        this._drawImageOnCanvas(this.originalImage);
+      }
+      this._positionCropOverlay();
+      if (this.isCropping) this._drawCropOverlay();
+    });
+  }
+
+  loadSettings() {
+    const storedSettings = localStorage.getItem('ai_image_gen_settings');
+    if (storedSettings) {
+      try {
+        const parsed = JSON.parse(storedSettings);
+        this.settings.prompt = parsed.prompt || this.settings.prompt;
+        this.settings.model = parsed.model || this.settings.model;
+      } catch (e) {
+        console.error("Failed to parse Image Generator settings", e);
+      }
+    }
+    this.promptInput.value = this.settings.prompt;
+    if (this.settings.model) {
+      this.modelSelect.value = this.settings.model;
+    }
+  }
+
+  saveSettings() {
+    this.settings.prompt = this.promptInput.value.trim();
+    this.settings.model = this.modelSelect.value;
+    localStorage.setItem('ai_image_gen_settings', JSON.stringify({
+      prompt: this.settings.prompt,
+      model: this.settings.model
+    }));
+    this._displayStatus("Settings saved.");
+  }
+
+  async _fetchAndPopulateModels() {
+    const modelsMap = new Map();
+    try {
+      const response = await fetch('https://image.pollinations.ai/models');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const modelsData = await response.json();
+      if (Array.isArray(modelsData)) {
+        modelsData.forEach(id => {
+          modelsMap.set(id, {
+            id: id,
+            name: id
+          });
+        });
+      } else if (typeof modelsData === 'object' && modelsData !== null) {
+        Object.entries(modelsData).forEach(([id, nameFromApi]) => {
+          modelsMap.set(id, {
+            id: id,
+            name: id
+          });
+        });
+      } else {
+        throw new Error("Unexpected model data format from API.");
+      }
+      this._displayStatus("Fetched AI models.");
+    } catch (error) {
+      console.error("Could not fetch models from API, using a fallback list if available.", error);
+      this._displayStatus("Warning: Could not fetch live AI models. Using default list if available.");
+      modelsMap.set('sdxl', {
+        id: 'sdxl',
+        name: 'sdxl'
+      });
+      modelsMap.set('dalle-3', {
+        id: 'dalle-3',
+        name: 'dalle-3'
+      });
+      modelsMap.set('openjourney-v4', {
+        id: 'openjourney-v4',
+        name: 'openjourney-v4'
+      });
+    }
+    this.availableModels = Array.from(modelsMap.values());
+    const preferredOrder = ['sdxl', 'dalle-3', 'openjourney-v4', 'stable-diffusion-2-1'];
+    this.availableModels.sort((a, b) => {
+      const aIdx = preferredOrder.indexOf(a.id);
+      const bIdx = preferredOrder.indexOf(b.id);
+      if (aIdx > -1 && bIdx > -1) return aIdx - bIdx;
+      if (aIdx > -1) return -1;
+      if (bIdx > -1) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    this.modelSelect.innerHTML = '';
+    let selectedModelId = this.settings.model;
+    if (!selectedModelId && this.availableModels.length > 0) {
+      const sdxl = this.availableModels.find(m => m.id === 'sdxl');
+      if (sdxl) {
+        selectedModelId = sdxl.id;
+      } else {
+        selectedModelId = this.availableModels[0].id;
+      }
+    }
+    this.availableModels.forEach(model => {
+      const option = document.createElement('option');
+      option.value = model.id;
+      option.textContent = model.name;
+      this.modelSelect.appendChild(option);
+    });
+    if (selectedModelId && this.availableModels.some(m => m.id === selectedModelId)) {
+      this.modelSelect.value = selectedModelId;
+      this.settings.model = selectedModelId;
+      this._displayStatus(`Using AI model: ${selectedModelId}`);
+    } else if (this.availableModels.length > 0) {
+      this.modelSelect.value = this.availableModels[0].id;
+      this.settings.model = this.availableModels[0].id;
+      this._displayStatus(`Using AI model: ${this.availableModels[0].id}`);
+    } else {
+      this._displayStatus("Warning: No AI models available.");
+      this.settings.model = null;
+    }
+  }
+
+  _showLoading(msg = "Generating image, please wait...") {
+    const toast = document.getElementById('ai-loading-toast');
+    const txt = document.getElementById('ai-loading-msg');
+    if (toast && txt) {
+      txt.textContent = msg;
+      toast.style.display = 'block';
+    }
+  }
+
+  _hideLoading() {
+    const toast = document.getElementById('ai-loading-toast');
+    if (toast) toast.style.display = 'none';
+  }
+
+  _displayStatus(msg) {
+    this.statusMessageDiv.textContent = msg;
+  }
+
+  _updateActionButtons() {
+    const hasImage = !!this.originalImage;
+    this.downloadImageBtn.disabled = !hasImage;
+    this.cropToggleButton.disabled = !hasImage;
+    if (!hasImage) {
+      this.downloadImageBtn.classList.remove('blink-success');
+      this.cropToggleButton.classList.remove('blink-success');
+    }
+  }
+
+  _fitCanvasToContainer(image) {
+    const container = this.imageContainer;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    let canvasWidth = image.width;
+    let canvasHeight = image.height;
+    if (canvasWidth > containerWidth || canvasHeight > containerHeight) {
+      const aspectRatio = image.width / image.height;
+      if (canvasWidth > containerWidth) {
+        canvasWidth = containerWidth;
+        canvasHeight = canvasWidth / aspectRatio;
+      }
+      if (canvasHeight > containerHeight) {
+        canvasHeight = containerHeight;
+        canvasWidth = canvasHeight * aspectRatio;
+      }
+    }
+    this.canvas.width = canvasWidth;
+    this.canvas.height = canvasHeight;
+  }
+
+  _drawImageOnCanvas(imageToDraw) {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this._fitCanvasToContainer(imageToDraw);
+    this.ctx.drawImage(imageToDraw, 0, 0, this.canvas.width, this.canvas.height);
+    this._positionCropOverlay();
+  }
+
+  _addModifierToPrompt() {
+    const modifier = this.promptModifiersSelect.value;
+    if (!modifier) {
+      return;
+    }
+    const textarea = this.promptInput;
+    let currentPrompt = textarea.value;
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+    let textToInsert = '';
+    if (currentPrompt.length > 0 && !currentPrompt.endsWith(', ')) {
+      textToInsert = `, ${modifier}`;
+    } else if (currentPrompt.endsWith(', ')) {
+      textToInsert = modifier;
+    } else {
+      textToInsert = modifier;
+    }
+    textarea.value = currentPrompt.substring(0, selectionStart) +
+      textToInsert +
+      currentPrompt.substring(selectionEnd);
+    const newCaretPosition = selectionStart + textToInsert.length;
+    textarea.focus();
+    textarea.setSelectionRange(newCaretPosition, newCaretPosition);
+    this.saveSettings();
+    this.promptModifiersSelect.value = "";
+  }
+
+  async generateImage() {
+    this.saveSettings();
+    const prompt = this.settings.prompt;
+    const model = this.settings.model;
+    if (!prompt) {
+      this._displayStatus("Please enter an image prompt.");
+      return;
+    }
+    if (!model) {
+      this._displayStatus("No AI model selected or available.");
+      return;
+    }
+    if (this.originalImage && this.originalImage.src) {
+      URL.revokeObjectURL(this.originalImage.src);
+    }
+    this.originalImage = null;
+    this.currentImageBlob = null;
+    this.generateBtn.textContent = "Loading...";
+    this.generateBtn.disabled = true;
+    this._updateActionButtons();
+    this._displayStatus("Generating image...");
+    this._showLoading("Generating image...");
+    this.isCropping = false;
+    this.cropOverlay.style.display = 'none';
+    this.cropToolsDiv.style.display = 'none';
+    this.canvas.style.cursor = 'default';
+    try {
+      let imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`;
+      let params = [];
+      if (model) {
+        params.push(`model=${model}`);
+      }
+      const randomSeed = Math.floor(Math.random() * 1000000000);
+      params.push(`seed=${randomSeed}`);
+      if (params.length > 0) {
+        imageUrl += `?${params.join('&')}`;
+      }
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const initialImageBlob = await response.blob();
+      const img = new Image();
+      img.src = URL.createObjectURL(initialImageBlob);
+      await new Promise((resolve, reject) => {
+        img.onload = async () => {
+          let finalImageToDisplay = img;
+          let finalBlobForDownload = initialImageBlob;
+          const cropBottomPixels = 50;
+          if (img.height > cropBottomPixels) {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = img.width;
+            tempCanvas.height = img.height - cropBottomPixels;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(
+              img,
+              0, 0,
+              img.width, img.height - cropBottomPixels,
+              0, 0,
+              tempCanvas.width, tempCanvas.height
+            );
+            const croppedBlob = await new Promise(res => tempCanvas.toBlob(res, 'image/png'));
+            if (croppedBlob) {
+              finalBlobForDownload = croppedBlob;
+              const croppedImg = new Image();
+              croppedImg.src = URL.createObjectURL(croppedBlob);
+              await new Promise(res => croppedImg.onload = res);
+              finalImageToDisplay = croppedImg;
+              URL.revokeObjectURL(img.src);
+            }
+          }
+          this.originalImage = finalImageToDisplay;
+          this.currentImageBlob = finalBlobForDownload;
+          this._drawImageOnCanvas(this.originalImage);
+          this._displayStatus("Image generated successfully!");
+          this._updateActionButtons();
+          this._positionCropOverlay();
+          resolve();
+        };
+        img.onerror = (e) => {
+          reject(new Error("Failed to load generated image."));
+        };
+      });
+    } catch (error) {
+      console.error("Error generating image:", error);
+      this._displayStatus(`Error generating image: ${error.message}. Please check prompt and parameters.`);
+      this.originalImage = null;
+      this.currentImageBlob = null;
+    } finally {
+      this.generateBtn.textContent = "Generate New Image";
+      this.generateBtn.disabled = false;
+      this._hideLoading();
+    }
+  }
+
+  downloadImage() {
+    if (!this.currentImageBlob) {
+      this._displayStatus("No image to download.");
+      return;
+    }
+    const url = URL.createObjectURL(this.currentImageBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    const fileName = this.settings.prompt.substring(0, 50).replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'generated_image';
+    a.download = `${fileName}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    this._displayStatus("Image downloaded.");
+    this.downloadImageBtn.classList.add('blink-success');
+    setTimeout(() => this.downloadImageBtn.classList.remove('blink-success'), 1000);
+  }
+
+  _positionCropOverlay() {
+    if (!this.originalImage) {
+      this.cropOverlay.style.display = 'none';
+      return;
+    }
+    const canvasRect = this.canvas.getBoundingClientRect();
+    const containerRect = this.imageContainer.getBoundingClientRect();
+    const canvasLeft = canvasRect.left - containerRect.left;
+    const canvasTop = canvasRect.top - containerRect.top;
+    this.cropOverlay.style.left = `${canvasLeft}px`;
+    this.cropOverlay.style.top = `${canvasTop}px`;
+    this.cropOverlay.style.width = `${canvasRect.width}px`;
+    this.cropOverlay.style.height = `${canvasRect.height}px`;
+    if (this.isCropping) {
+      this.cropOverlay.style.display = 'block';
+    }
+  }
+
+  toggleCropMode() {
+    if (!this.originalImage) {
+      this._displayStatus("Generate an image first to crop.");
+      return;
+    }
+    this.isCropping = !this.isCropping;
+    this.cropToggleButton.textContent = this.isCropping ? "Exit Crop Mode" : "Crop Image";
+    this.cropToggleButton.classList.toggle('active', this.isCropping);
+    this.cropToolsDiv.style.display = this.isCropping ? 'flex' : 'none';
+    this.downloadImageBtn.style.display = this.isCropping ? 'none' : 'inline-block';
+    if (this.isCropping) {
+      this._positionCropOverlay();
+      this.canvas.style.cursor = 'crosshair';
+      this.resetCropRect();
+      this._drawCropOverlay();
+    } else {
+      this.cropOverlay.style.display = 'none';
+      this.canvas.style.cursor = 'default';
+      this._drawImageOnCanvas(this.originalImage);
+      this.activeAspectRatio = 'free';
+      this.cropToolsDiv.querySelectorAll('button[data-aspect]').forEach(btn => btn.classList.remove('active'));
+      this.downloadImageBtn.style.display = 'inline-block';
+    }
+  }
+
+  resetCropRect() {
+    this.cropRect = {
+      x: 0,
+      y: 0,
+      width: this.canvas.width,
+      height: this.canvas.height
+    };
+    this.setAspectRatio(this.activeAspectRatio);
+  }
+
+  getAspectRatioValue(aspect) {
+    if (aspect === '1:1') return 1;
+    if (aspect === '4:3') return 4 / 3;
+    if (aspect === '16:9') return 16 / 9;
+    return 0;
+  }
+
+  setAspectRatio(aspect) {
+    this.activeAspectRatio = aspect;
+    this.cropToolsDiv.querySelectorAll('button[data-aspect]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.aspect === aspect);
+    });
+    if (!this.originalImage || !this.isCropping) return;
+    const canvasWidth = this.canvas.width;
+    const canvasHeight = this.canvas.height;
+    const minSize = 20;
+    let newRect = {
+      ...this.cropRect
+    };
+    if (aspect === 'free') {
+      if (newRect.width === 0 || newRect.height === 0) {
+        newRect = {
+          x: 0,
+          y: 0,
+          width: canvasWidth,
+          height: canvasHeight
+        };
+      }
+    } else {
+      const targetAspectRatio = this.getAspectRatioValue(aspect);
+      const currentCenterX = newRect.x + newRect.width / 2;
+      const currentCenterY = newRect.y + newRect.height / 2;
+      let newWidth, newHeight;
+      newWidth = newRect.width;
+      newHeight = newWidth / targetAspectRatio;
+      if (newHeight > canvasHeight || newHeight < minSize) {
+        newHeight = newRect.height;
+        newWidth = newHeight * targetAspectRatio;
+      }
+      if (newWidth > canvasWidth || newHeight > canvasHeight || newWidth < minSize || newHeight < minSize) {
+        let tempWidth = canvasWidth;
+        let tempHeight = canvasWidth / targetAspectRatio;
+        if (tempHeight > canvasHeight) {
+          tempHeight = canvasHeight;
+          tempWidth = canvasHeight * targetAspectRatio;
+        }
+        newWidth = Math.max(minSize, tempWidth);
+        newHeight = Math.max(minSize, tempHeight);
+      }
+      newRect.width = newWidth;
+      newRect.height = newHeight;
+      newRect.x = currentCenterX - newRect.width / 2;
+      newRect.y = currentCenterY - newRect.height / 2;
+    }
+    this.cropRect = this._clampRect(newRect, canvasWidth, canvasHeight, minSize);
+    this._drawCropOverlay();
+  }
+
+  getRelativeMouseCoords(e) {
+    const rect = this.cropOverlay.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  }
+
+  getHandleType(x, y) {
+    const buffer = 10;
+    const {
+      x: crX,
+      y: crY,
+      width: crW,
+      height: crH
+    } = this.cropRect;
+    if (x >= crX - buffer && x <= crX + buffer && y >= crY - buffer && y <= crY + buffer) return 'nw';
+    if (x >= crX + crW - buffer && x <= crX + crW + buffer && y >= crY - buffer && y <= crY + buffer) return 'ne';
+    if (x >= crX - buffer && x <= crX + buffer && y >= crY + crH - buffer && y <= crY + crH + buffer) return 'sw';
+    if (x >= crX + crW - buffer && x <= crX + crW + buffer && y >= crY + crH - buffer && y <= crY + crH + buffer) return 'se';
+    if (x >= crX + buffer && x <= crX + crW - buffer && y >= crY - buffer && y <= crY + buffer) return 'n';
+    if (x >= crX + buffer && x <= crX + crW - buffer && y >= crY + crH - buffer && y <= crY + crH + buffer) return 's';
+    if (y >= crY + buffer && y <= crY + crH - buffer && x >= crX - buffer && x <= crX + buffer) return 'w';
+    if (y >= crY + buffer && y <= crY + crH - buffer && x >= crX + crW - buffer && x <= crX + crW + buffer) return 'e';
+    if (x >= crX && x <= crX + crW && y >= crY && y <= crY + crH) return 'move';
+    return null;
+  }
+
+  handleCropMouseDown(e) {
+    if (!this.isCropping) return;
+    e.preventDefault();
+    const {
+      x,
+      y
+    } = this.getRelativeMouseCoords(e);
+    this.dragStart = {
+      x,
+      y
+    };
+    this.initialCropRect = {
+      ...this.cropRect
+    };
+    this.dragMode = this.getHandleType(x, y);
+    if (!this.dragMode) {
+      this.cropRect = {
+        x: x,
+        y: y,
+        width: 0,
+        height: 0
+      };
+      this.dragMode = 'draw';
+      this.activeAspectRatio = 'free';
+      this.cropToolsDiv.querySelectorAll('button[data-aspect]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.aspect === 'free');
+      });
+    }
+  }
+
+  handleCropMouseMove(e) {
+    if (!this.isCropping || !this.dragMode) return;
+    e.preventDefault();
+    const {
+      x: mouseX,
+      y: mouseY
+    } = this.getRelativeMouseCoords(e);
+    const {
+      x: iX,
+      y: iY,
+      width: iW,
+      height: iH
+    } = this.initialCropRect;
+    let newX, newY, newWidth, newHeight;
+    const minSize = 20;
+    const targetAspectRatio = this.getAspectRatioValue(this.activeAspectRatio);
+    const canvasWidth = this.canvas.width;
+    const canvasHeight = this.canvas.height;
+    if (this.dragMode === 'move') {
+      newX = iX + (mouseX - this.dragStart.x);
+      newY = iY + (mouseY - this.dragStart.y);
+      newWidth = iW;
+      newHeight = iH;
+    } else if (this.dragMode === 'draw') {
+      let startX = this.dragStart.x;
+      let startY = this.dragStart.y;
+      let currentWidth = mouseX - startX;
+      let currentHeight = mouseY - startY;
+      newX = startX;
+      newY = startY;
+      newWidth = currentWidth;
+      newHeight = currentHeight;
+      if (newWidth < 0) {
+        newX += newWidth;
+        newWidth = Math.abs(newWidth);
+      }
+      if (newHeight < 0) {
+        newY += newHeight;
+        newHeight = Math.abs(newHeight);
+      }
+      if (targetAspectRatio > 0) {
+        if (newWidth / newHeight > targetAspectRatio) {
+          newWidth = newHeight * targetAspectRatio;
+        } else {
+          newHeight = newWidth / targetAspectRatio;
+        }
+      }
+    } else {
+      let fixedX, fixedY;
+      switch (this.dragMode) {
+        case 'nw':
+          fixedX = iX + iW;
+          fixedY = iY + iH;
+          break;
+        case 'ne':
+          fixedX = iX;
+          fixedY = iY + iH;
+          break;
+        case 'sw':
+          fixedX = iX + iW;
+          fixedY = iY;
+          break;
+        case 'se':
+          fixedX = iX;
+          fixedY = iY;
+          break;
+        case 'n':
+          fixedX = iX + iW / 2;
+          fixedY = iY + iH;
+          break;
+        case 's':
+          fixedX = iX + iW / 2;
+          fixedY = iY;
+          break;
+        case 'w':
+          fixedX = iX + iW;
+          fixedY = iY + iH / 2;
+          break;
+        case 'e':
+          fixedX = iX;
+          fixedY = iY + iH / 2;
+          break;
+      }
+      let provisionalWidth = Math.abs(mouseX - fixedX);
+      let provisionalHeight = Math.abs(mouseY - fixedY);
+      if (targetAspectRatio > 0) {
+        if (['n', 's'].includes(this.dragMode)) {
+          provisionalWidth = provisionalHeight * targetAspectRatio;
+        } else if (['w', 'e'].includes(this.dragMode)) {
+          provisionalHeight = provisionalWidth / targetAspectRatio;
+        } else {
+          if (provisionalWidth / provisionalHeight > targetAspectRatio) {
+            provisionalWidth = provisionalHeight * targetAspectRatio;
+          } else {
+            provisionalHeight = provisionalWidth / targetAspectRatio;
+          }
+        }
+      }
+      newWidth = provisionalWidth;
+      newHeight = provisionalHeight;
+      switch (this.dragMode) {
+        case 'nw':
+          newX = fixedX - newWidth;
+          newY = fixedY - newHeight;
+          break;
+        case 'ne':
+          newX = fixedX;
+          newY = fixedY - newHeight;
+          break;
+        case 'sw':
+          newX = fixedX - newWidth;
+          newY = fixedY;
+          break;
+        case 'se':
+          newX = fixedX;
+          newY = fixedY;
+          break;
+        case 'n':
+          newX = fixedX - newWidth / 2;
+          newY = fixedY - newHeight;
+          break;
+        case 's':
+          newX = fixedX - newWidth / 2;
+          newY = fixedY;
+          break;
+        case 'w':
+          newX = fixedX - newWidth;
+          newY = fixedY - newHeight / 2;
+          break;
+        case 'e':
+          newX = fixedX;
+          newY = fixedY - newHeight / 2;
+          break;
+      }
+    }
+    this.cropRect = this._clampRect({
+        x: newX,
+        y: newY,
+        width: newWidth,
+        height: newHeight
+      },
+      canvasWidth, canvasHeight, minSize
+    );
+    this._drawCropOverlay();
+  }
+
+  _drawCropOverlay() {
+    const {
+      x,
+      y,
+      width,
+      height
+    } = this.cropRect;
+    const handleSize = 12;
+    this.cropBox.style.left = `${x}px`;
+    this.cropBox.style.top = `${y}px`;
+    this.cropBox.style.width = `${width}px`;
+    this.cropBox.style.height = `${height}px`;
+    const handles = {
+      topLeft: this.cropOverlay.querySelector('.crop-handle.top-left'),
+      topRight: this.cropOverlay.querySelector('.crop-handle.top-right'),
+      bottomLeft: this.cropOverlay.querySelector('.crop-handle.bottom-left'),
+      bottomRight: this.cropOverlay.querySelector('.crop-handle.bottom-right'),
+      topCenter: this.cropOverlay.querySelector('.crop-handle.top-center'),
+      bottomCenter: this.cropOverlay.querySelector('.crop-handle.bottom-center'),
+      leftCenter: this.cropOverlay.querySelector('.crop-handle.left-center'),
+      rightCenter: this.cropOverlay.querySelector('.crop-handle.right-center'),
+    };
+    if (handles.topLeft) {
+      handles.topLeft.style.left = `${x - handleSize / 2}px`;
+      handles.topLeft.style.top = `${y - handleSize / 2}px`;
+    }
+    if (handles.topRight) {
+      handles.topRight.style.left = `${x + width - handleSize / 2}px`;
+      handles.topRight.style.top = `${y - handleSize / 2}px`;
+    }
+    if (handles.bottomLeft) {
+      handles.bottomLeft.style.left = `${x - handleSize / 2}px`;
+      handles.bottomLeft.style.top = `${y + height - handleSize / 2}px`;
+    }
+    if (handles.bottomRight) {
+      handles.bottomRight.style.left = `${x + width - handleSize / 2}px`;
+      handles.bottomRight.style.top = `${y + height - handleSize / 2}px`;
+    }
+    if (handles.topCenter) {
+      handles.topCenter.style.left = `${x + width / 2 - handleSize / 2}px`;
+      handles.topCenter.style.top = `${y - handleSize / 2}px`;
+      handles.topCenter.style.transform = 'none';
+    }
+    if (handles.bottomCenter) {
+      handles.bottomCenter.style.left = `${x + width / 2 - handleSize / 2}px`;
+      handles.bottomCenter.style.top = `${y + height - handleSize / 2}px`;
+      handles.bottomCenter.style.transform = 'none';
+    }
+    if (handles.leftCenter) {
+      handles.leftCenter.style.left = `${x - handleSize / 2}px`;
+      handles.leftCenter.style.top = `${y + height / 2 - handleSize / 2}px`;
+      handles.leftCenter.style.transform = 'none';
+    }
+    if (handles.rightCenter) {
+      handles.rightCenter.style.left = `${x + width - handleSize / 2}px`;
+      handles.rightCenter.style.top = `${y + height / 2 - handleSize / 2}px`;
+      handles.rightCenter.style.transform = 'none';
+    }
+    const minVisibleHandleSpace = handleSize * 2 + 5;
+    const showHandles = width > minVisibleHandleSpace && height > minVisibleHandleSpace;
+    Object.values(handles).forEach(handle => {
+      if (handle) handle.style.display = showHandles ? 'block' : 'none';
+    });
+  }
+
+  _clampRect(rect, canvasWidth, canvasHeight, minSize) {
+    let {
+      x,
+      y,
+      width,
+      height
+    } = rect;
+    width = Math.max(width, minSize);
+    height = Math.max(height, minSize);
+    x = Math.max(0, Math.min(x, canvasWidth - width));
+    y = Math.max(0, Math.min(y, canvasHeight - height));
+    width = Math.min(width, canvasWidth - x);
+    height = Math.min(height, canvasHeight - y);
+    width = Math.max(width, minSize);
+    height = Math.max(height, minSize);
+    return {
+      x,
+      y,
+      width,
+      height
+    };
+  }
+
+  handleCropMouseUp(e) {
+    if (!this.isCropping || !this.dragMode) return;
+    e.preventDefault();
+    this.dragMode = null;
+    this._drawCropOverlay();
+  }
+
+  applyCrop() {
+    if (!this.originalImage || !this.isCropping) {
+      this._displayStatus("No image or not in cropping mode.");
+      return;
+    }
+    const scaleX = this.originalImage.width / this.canvas.width;
+    const scaleY = this.originalImage.height / this.canvas.height;
+    const sourceX = this.cropRect.x * scaleX;
+    const sourceY = this.cropRect.y * scaleY;
+    const sourceWidth = this.cropRect.width * scaleX;
+    const sourceHeight = this.cropRect.height * scaleY;
+    const croppedCanvas = document.createElement('canvas');
+    croppedCanvas.width = sourceWidth;
+    croppedCanvas.height = sourceHeight;
+    const croppedCtx = croppedCanvas.getContext('2d');
+    croppedCtx.drawImage(this.originalImage,
+      sourceX, sourceY, sourceWidth, sourceHeight,
+      0, 0, croppedCanvas.width, croppedCanvas.height
+    );
+    croppedCanvas.toBlob(blob => {
+      if (blob) {
+        this.currentImageBlob = blob;
+        const newImg = new Image();
+        newImg.onload = () => {
+          this.originalImage = newImg;
+          this.toggleCropMode();
+          this._drawImageOnCanvas(this.originalImage);
+          this._displayStatus("Image cropped successfully!");
+          this.cropToggleButton.classList.add('blink-success');
+          setTimeout(() => this.cropToggleButton.classList.remove('blink-success'), 1000);
+        };
+        newImg.src = URL.createObjectURL(blob);
+      } else {
+        this._displayStatus("Failed to create cropped image blob.");
+      }
+    }, 'image/png');
+  }
+
+  cancelCrop() {
+    if (!this.isCropping) return;
+    this.isCropping = false;
+    this.cropOverlay.style.display = 'none';
+    this.cropToolsDiv.style.display = 'none';
+    this.canvas.style.cursor = 'default';
+    this.cropToggleButton.textContent = "Crop Image";
+    this.cropToggleButton.classList.remove('active');
+    this.downloadImageBtn.style.display = 'inline-block';
+    this._drawImageOnCanvas(this.originalImage);
+    this._positionCropOverlay();
+    this._displayStatus("Cropping cancelled.");
+  }
+}
+
+window.onload = () => {
+  new ImageGeneratorApp();
+};
+
+</script>
+  </body>
+</html>
