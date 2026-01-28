@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Image to ASCII</title>
+  <style>
+
+    :root {
+      --bg-color: #1a1a1a;
+      --text-color: #00ff00;
+      --accent-color: #ff00ff;
+      --border-color: #333;
+      --button-bg: #4a148c;
+      --font: monospace;
+    }
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: var(--font);
+      margin: 0;
+      padding: 0.5em;
+      height: 100vh;
+      box-sizing: border-box;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      grid-template-rows: 1fr;
+      gap: 1.5em;
+      overflow: hidden;
+    }
+    body.dragover {
+      background-color: #2a2a2a;
+    }
+    body.dragover #controls {
+      border: 2px dashed var(--accent-color);
+    }
+    #controls {
+      background: #2c2c2c;
+      padding: 1.5em;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2em;
+      align-items: left;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      height: 95vh;
+      overflow-y: auto;
+    }
+    label {
+      font-size: 1.1em;
+    }
+    input[type="file"],
+    input[type="range"] {
+      width: 98%;
+      max-width: 300px;
+    }
+    button {
+      background-color: var(--button-bg);
+      color: var(--text-color);
+      border: 1px solid var(--accent-color);
+      border-radius: 5px;
+      padding: 10px 20px;
+      font-family: var(--font);
+      font-size: 1em;
+      cursor: pointer;
+      transition: background-color 0.3s, box-shadow 0.3s;
+      text-shadow: 0 0 3px var(--text-color);
+      width: 100%;
+    }
+    button:hover {
+      background-color: #6a1b9a;
+      box-shadow: 0 0 10px var(--accent-color);
+    }
+    #ascii-container {
+      position: relative;
+      background: #000;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      height: 95vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #ascii-output {
+      font-family: 'Courier New', Courier, monospace;
+      white-space: pre;
+      line-height: 0.6;
+      letter-spacing: 0;
+      transform-origin: center center;
+    }
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #555;
+      transition: .4s;
+      border-radius: 34px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked+.slider {
+      background-color: var(--accent-color);
+    }
+    input:checked+.slider:before {
+      transform: translateX(26px);
+    }
+    @keyframes kp_P {
+      0% {
+        box-shadow: 0 0 0 0 rgba(250, 92, 92, 0.7);
+        transform: scale(1)
+      }
+      70% {
+        box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
+        transform: scale(1.05)
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+        transform: scale(1)
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <div id="controls">
+    <h3>ASCII Generator</h3>
+    <p style="margin: 0 0 20px 0;">&copy; Johnny Heggelund</p>
+    <label for="image-upload">Upload Image:</label>
+    <input type="file" id="image-upload" accept="image/*">
+    <label for="width-slider">Resolution (Width): <span id="width-value">150</span></label>
+    <input type="range" id="width-slider" min="50" max="400" value="150">
+    <label for="contrast-slider">Contrast: <span id="contrast-value">1.0</span></label>
+    <input type="range" id="contrast-slider" min="0.5" max="3.0" value="1.0" step="0.1">
+    <div class="toggle-switch">
+      <span>Mono</span>
+      <label class="switch">
+        <input type="checkbox" id="color-toggle">
+        <span class="slider"></span>
+      </label>
+      <span>Color</span>
+    </div>
+    <button id="copy-button">Copy to Clipboard</button>
+    <button id="export-html-button">Export HTML</button>
+    <button id="export-png-button">Export PNG</button>
+  </div>
+  <div id="ascii-container">
+    <pre id="ascii-output">Drop image here...</pre>
+  </div>
+  <canvas id="canvas" style="display:none;"></canvas>
+
+<script>
+
+    const imageUpload = document.getElementById('image-upload');
+    const asciiOutput = document.getElementById('ascii-output');
+    const asciiContainer = document.getElementById('ascii-container');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const widthSlider = document.getElementById('width-slider');
+    const widthValue = document.getElementById('width-value');
+    const copyButton = document.getElementById('copy-button');
+    const exportHtmlButton = document.getElementById('export-html-button');
+    const exportPngButton = document.getElementById('export-png-button');
+    const colorToggle = document.getElementById('color-toggle');
+    const contrastSlider = document.getElementById('contrast-slider');
+    const contrastValue = document.getElementById('contrast-value');
+    const ASCII_CHARS = " `.-':_,^=;><+!rc*/z?sLTv)J7(|Fi{C}fI31tlu[neoZ5Yxjya]2ESwqkP6h9d4VpOGbUAKXHm8RD#$Bg0MNWQ%&@".split('');
+    let currentImage = null;
+    widthSlider.addEventListener('input', () => {
+      widthValue.textContent = widthSlider.value;
+      handleLoadedImage();
+    });
+    contrastSlider.addEventListener('input', () => {
+      contrastValue.textContent = parseFloat(contrastSlider.value).toFixed(1);
+      handleLoadedImage();
+    });
+    colorToggle.addEventListener('change', handleLoadedImage);
+    imageUpload.addEventListener('change', (e) => {
+      if (e.target.files[0]) handleImageFile(e.target.files[0]);
+    });
+    document.body.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      document.body.classList.add('dragover');
+    });
+    document.body.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      document.body.classList.remove('dragover');
+    });
+    document.body.addEventListener('drop', (e) => {
+      e.preventDefault();
+      document.body.classList.remove('dragover');
+      if (e.dataTransfer.files[0] && e.dataTransfer.files[0].type.startsWith('image/')) {
+        handleImageFile(e.dataTransfer.files[0]);
+      }
+    });
+    window.addEventListener('resize', fitAsciiToContainer);
+    function handleImageFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          currentImage = img;
+          generateAscii();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+    function handleLoadedImage() {
+      if (currentImage) generateAscii();
+    }
+    function generateAscii() {
+      if (!currentImage) return;
+      const maxWidth = parseInt(widthSlider.value);
+      const contrast = parseFloat(contrastSlider.value);
+      const aspectRatio = currentImage.height / currentImage.width;
+      const newWidth = maxWidth;
+      const newHeight = Math.round(newWidth * aspectRatio);
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+      ctx.drawImage(currentImage, 0, 0, newWidth, newHeight);
+      const imageData = ctx.getImageData(0, 0, newWidth, newHeight).data;
+      let outputHtml = '';
+      const isColorMode = colorToggle.checked;
+      for (let i = 0; i < newHeight; i++) {
+        for (let j = 0; j < newWidth; j++) {
+          const offset = (i * newWidth + j) * 4;
+          const r = imageData[offset];
+          const g = imageData[offset + 1];
+          const b = imageData[offset + 2];
+          const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+          let adjustedBrightness = (brightness - 128) * contrast + 128;
+          adjustedBrightness = Math.max(0, Math.min(255, adjustedBrightness));
+          const charIndex = Math.floor((adjustedBrightness / 255) * (ASCII_CHARS.length - 1));
+          let char = ASCII_CHARS[charIndex];
+          if (char === '<') char = '&lt;';
+          else if (char === '>') char = '&gt;';
+          else if (char === '&') char = '&amp;';
+          else if (char === ' ') char = '&nbsp;';
+          if (isColorMode) {
+            outputHtml += `<span style="color:rgb(${r},${g},${b})">${char}</span>`;
+          } else {
+            outputHtml += char;
+          }
+        }
+        outputHtml += '\n';
+      }
+      asciiOutput.innerHTML = outputHtml;
+      fitAsciiToContainer();
+    }
+    function fitAsciiToContainer() {
+      if (!currentImage) return;
+      asciiOutput.style.transform = 'none';
+      asciiOutput.style.fontSize = '12px';
+      const containerW = asciiContainer.clientWidth - 40;
+      const containerH = asciiContainer.clientHeight - 40;
+      const contentW = asciiOutput.offsetWidth;
+      const contentH = asciiOutput.offsetHeight;
+      if (contentW === 0 || contentH === 0) return;
+      const scaleX = containerW / contentW;
+      const scaleY = containerH / contentH;
+      const scale = Math.min(scaleX, scaleY);
+      asciiOutput.style.transform = `scale(${scale})`;
+    }
+    copyButton.addEventListener('click', () => {
+      if (!currentImage) return;
+      let textToCopy = asciiOutput.innerText;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy).then(showCopySuccess).catch(() => fallbackCopy(textToCopy));
+      } else {
+        fallbackCopy(textToCopy);
+      }
+    });
+    function fallbackCopy(text) {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) showCopySuccess();
+      } catch (err) {
+        console.error('Fallback copy failed', err);
+      }
+      document.body.removeChild(textArea);
+    }
+    function showCopySuccess() {
+      const originalText = copyButton.textContent;
+      copyButton.textContent = 'Copied! ✨';
+      copyButton.style.backgroundColor = '#2e7d32';
+      setTimeout(() => {
+        copyButton.textContent = originalText;
+        copyButton.style.backgroundColor = '';
+      }, 2000);
+    }
+    exportHtmlButton.addEventListener('click', () => {
+      if (!currentImage) {
+        alert('Generate art first!');
+        return;
+      }
+      const content = asciiOutput.innerHTML;
+      const isColor = colorToggle.checked;
+      const htmlFile = createExportTemplate(content, isColor);
+      const blob = new Blob([htmlFile], {
+        type: 'text/html'
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'ascii-art.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+    exportPngButton.addEventListener('click', () => {
+      if (!currentImage) {
+        alert('Generate art first!');
+        return;
+      }
+      const maxWidth = parseInt(widthSlider.value);
+      const contrast = parseFloat(contrastSlider.value);
+      const aspectRatio = currentImage.height / currentImage.width;
+      const newWidth = maxWidth;
+      const newHeight = Math.round(newWidth * aspectRatio);
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCanvas.width = newWidth;
+      tempCanvas.height = newHeight;
+      tempCtx.drawImage(currentImage, 0, 0, newWidth, newHeight);
+      const imageData = tempCtx.getImageData(0, 0, newWidth, newHeight).data;
+      const exportCanvas = document.createElement('canvas');
+      const exportCtx = exportCanvas.getContext('2d');
+      const fontSize = 16;
+      const lineHeight = fontSize * 0.6;
+      exportCtx.font = `${fontSize}px "Courier New", monospace`;
+      const charWidth = exportCtx.measureText('A').width;
+      exportCanvas.width = Math.ceil(newWidth * charWidth);
+      exportCanvas.height = Math.ceil(newHeight * lineHeight);
+      exportCtx.fillStyle = '#000000';
+      exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+      exportCtx.font = `${fontSize}px "Courier New", monospace`;
+      exportCtx.textBaseline = 'top';
+      const isColorMode = colorToggle.checked;
+      if (!isColorMode) exportCtx.fillStyle = '#00ff00';
+      for (let i = 0; i < newHeight; i++) {
+        for (let j = 0; j < newWidth; j++) {
+          const offset = (i * newWidth + j) * 4;
+          const r = imageData[offset];
+          const g = imageData[offset + 1];
+          const b = imageData[offset + 2];
+          const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+          let adjustedBrightness = (brightness - 128) * contrast + 128;
+          adjustedBrightness = Math.max(0, Math.min(255, adjustedBrightness));
+          const charIndex = Math.floor((adjustedBrightness / 255) * (ASCII_CHARS.length - 1));
+          const char = ASCII_CHARS[charIndex];
+          if (isColorMode) {
+            exportCtx.fillStyle = `rgb(${r},${g},${b})`;
+          }
+          exportCtx.fillText(char, j * charWidth, i * lineHeight);
+        }
+      }
+      const link = document.createElement('a');
+      link.download = 'ascii-art.png';
+      link.href = exportCanvas.toDataURL('image/png');
+      link.click();
+    });
+    function createExportTemplate(content, isColor) {
+      const bg = '#000000';
+      const fg = isColor ? '#ffffff' : '#00ff00';
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ASCII Art Export</title>
+    <style>
+        body { margin: 0; padding: 0; background: ${bg}; color: ${fg}; height: 100vh; width: 100vw; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        pre { font-family: 'Courier New', monospace; font-size: 12px; line-height: 0.6; white-space: pre; transform-origin: center center; }
+    </style>
+</head>
+<body>
+    <pre id="art">${content}</pre>
+    <script>
+        function resize() {
+            const pre = document.getElementById('art');
+            pre.style.transform = 'none';
+            const w = window.innerWidth * 0.95;
+            const h = window.innerHeight * 0.95;
+            const pw = pre.offsetWidth;
+            const ph = pre.offsetHeight;
+            const scale = Math.min(w/pw, h/ph);
+            pre.style.transform = 'scale(' + scale + ')';
+        }
+        window.addEventListener('resize', resize);
+        window.addEventListener('load', resize);
+        resize();
+    <\/script>
+</body>
+</html>`;
+    }
+
+</script>
+</body>
+</html>
