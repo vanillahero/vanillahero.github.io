@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1e1e1e">
+    <title>Single Scoop Web Code Editor</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div id="ai-loading-toast">
+      <span class="brain-icon">🧠</span>
+      <div class="loading-text" id="ai-loading-msg">Gemini is coding, please wait... 🧠</div>
+    </div>
+    <div id="toolbar">
+      <input type="text" id="find-input" placeholder="Find..." autocomplete="one-time-code">
+      <input type="text" id="replace-input" placeholder="Replace..." autocomplete="one-time-code">
+      <button onclick="editor.search.findNext()">Next</button>
+      <button onclick="editor.search.replace()">Replace</button>
+      <button onclick="editor.search.replaceAll()">All</button>
+      <button onclick="editor.search.reset()" title="Clear search and highlights">Reset</button>
+      <div class="stats-anchor">
+        <span id="search-stats"></span>
+      </div>
+      <div id="toolbar-right">
+        <select id="model-selector" title="Choose AI Model" onchange="editor.ai.saveModelPreference();" onmousedown="event.stopPropagation();" onmouseup="event.stopPropagation();" onclick="event.stopPropagation(); return false;" onfocus="event.stopPropagation();" autocomplete="off">
+          <option value="" disabled selected>Loading...</option>
+        </select>
+        <button onclick="editor.ai.toggleChat()" style="margin-right: 10px;" title="Open AI Chat"><strong>Chat</strong></button>
+        <button id="image-gen-toolbar-btn" onclick="editor.imageGenerator.showModal()" style="margin-right: 10px;" title="Image Generator"><strong>Image</strong></button>
+        <button onclick="editor.insertSkeleton()" title="Insert HTML5 Template">🧩</button>
+        <button id="color-btn" onclick="toggleColorPicker()" title="Color Picker">🎨</button>
+      </div>
+      <div id="color-picker" class="color-popup" style="display: none;">
+        <div id="color-grid"></div>
+      </div>
+    </div>
+    <div id="image-gen-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-box" style="width: 550px; padding: 0; box-sizing: border-box; background: #1e1e1e; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; display: flex; flex-direction: column;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding: 15px 25px; border-bottom: 1px solid #333;">
+          <h2 style="margin:0; color:#4fc1ff;">Image Generator</h2>
+          <button id="image-gen-close-btn" style="background:none; border:none; color:#888; font-size:20px; cursor:pointer; padding:0 5px;" title="Close">✕</button>
+        </div>
+        <div style="padding: 15px 25px; flex: 1; display: flex; flex-direction: column; min-height: 200px;">
+          <div style="margin-bottom: 15px;">
+            <label for="image-gen-prompt" style="color:#ddd; font-size:13px; display:block; margin-bottom:5px;">Image Prompt</label>
+            <input id="image-gen-prompt" type="text" placeholder="a cat playing guitar" style="width:100%; padding:10px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; box-sizing: border-box; outline:none;" autocomplete="one-time-code">
+          </div>
+          <div style="display:flex; justify-content: flex-end; gap: 10px; margin-bottom: 15px;">
+            <button id="image-gen-generate-btn" style="background:#0e639c; color:white; border:none; padding:8px 20px; font-weight:bold; border-radius:4px; cursor:pointer;">Generate</button>
+          </div>
+          <div id="image-gen-output-area" style="flex: 1; background: #222; border: 1px solid #444; padding: 10px; border-radius: 4px; overflow-y: auto; color: #d4d4d4; font-family: 'Consolas', monospace; font-size: 13px; min-height: 200px; text-align: center;">
+            Results will appear here...
+          </div>
+          <div style="text-align: right; margin-top: 15px;">
+            <button id="image-gen-insert-btn" style="background:#2da042; color:#fff; border:none; padding:8px 20px; font-weight:bold; border-radius:4px; cursor:pointer; opacity: 0.5; cursor: default;" disabled>Insert into Editor</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="color-picker" class="color-popup" style="display: none;">
+      <div id="color-grid"></div>
+    </div>
+    </div>
+    <div id="tabs-bar">
+      <div id="tabs-container">
+      </div>
+      <button id="add-tab-btn" onclick="editor.addNewTab()" title="New File">+</button>
+    </div>
+    <div id="editor" tabindex="0">
+      <div id="scroll-phantom"></div>
+      <div id="view-port"></div>
+      <div id="cursor" class="blink"></div>
+    </div>
+    <div id="chat-sidebar">
+      <div style="padding: 10px; border-bottom: 1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-weight:bold; color:#d4d4d4;">Gemini Chat 🧠</span>
+        <div style="display:flex; gap:10px;">
+          <button onclick="editor.ai.showSetupModal()" title="API Settings" style="background:none; border:none; cursor:pointer; font-size:16px;">⚙️</button>
+          <button onclick="editor.ai.toggleChat()" style="background:none; border:none; color:#888; cursor:pointer;">✕</button>
+        </div>
+      </div>
+      <div id="chat-history"></div>
+      <div id="chat-input-area">
+        <textarea id="chat-input" placeholder="Ask Gemini..."></textarea>
+        <div style="text-align: right; margin-top: 5px;">
+          <button onclick="editor.ai.clearChat()" style="background:transparent; border:1px solid #444; color:#888; padding:4px 8px; cursor:pointer; font-size:11px; margin-right:5px;">Clear</button>
+          <button onclick="editor.ai.sendUserMessage()" style="background:#0e639c; border:none; color:white; padding:4px 12px; cursor:pointer; border-radius:3px;">Send</button>
+        </div>
+      </div>
+    </div>
+    <div id="github-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-box" style="width: 550px; padding: 0; box-sizing: border-box; background: #1e1e1e; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; display: flex; flex-direction: column;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding: 15px 25px; border-bottom: 1px solid #333;">
+          <h2 style="margin:0; color:#4fc1ff;">GitHub Integration</h2>
+          <div style="display:flex; gap:10px;">
+            <button id="github-settings-toggle-btn" style="background:none; border:none; cursor:pointer; font-size:16px; color:#888;" title="Toggle Settings">⚙️</button>
+            <button id="github-close-btn" style="background:none; border:none; color:#888; font-size:20px; cursor:pointer; padding:0 5px;" title="Close">✕</button>
+          </div>
+        </div>
+        <div id="github-settings-area" style="padding: 15px 25px; flex-shrink: 0; display: block;">
+          <p style="color:#ccc; font-size: 14px; margin-bottom: 15px; line-height: 1.5;">
+            Configure your GitHub repository details. You'll need a
+            <a href="https://github.com/settings/tokens" target="_blank" style="color: #4fc1ff; text-decoration: none; font-weight: bold; border-bottom: 1px dashed #4fc1ff;">Personal Access Token (PAT)</a>
+            with `repo` scope.
+          </p>
+          <div style="margin-bottom: 15px;">
+            <label for="github-pat-input" style="color:#ddd; font-size:13px; display:block; margin-bottom:5px;">Personal Access Token (PAT):</label>
+            <input id="github-pat-input" type="password" placeholder="ghp_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" style="width:100%; padding:10px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; box-sizing: border-box; outline:none;">
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label for="github-owner-input" style="color:#ddd; font-size:13px; display:block; margin-bottom:5px;">Repository Owner (username/org):</label>
+            <input id="github-owner-input" type="text" placeholder="your-username" style="width:100%; padding:10px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; box-sizing: border-box; outline:none;">
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label for="github-branch-input" style="color:#ddd; font-size:13px; display:block; margin-bottom:5px;">Branch:</label>
+            <input id="github-branch-input" type="text" value="main" placeholder="main" style="width:100%; padding:10px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; box-sizing: border-box; outline:none;">
+          </div>
+          <div style="display:flex; justify-content: flex-end; gap: 10px;">
+            <button id="github-save-settings-btn" style="background:#4fc1ff; color:#1e1e1e; border:none; padding:8px 20px; font-weight:bold; border-radius:4px; cursor:pointer;">Save Settings</button>
+          </div>
+        </div>
+        <div id="github-browser-area" style="padding: 15px 25px; flex: 1; display: none; flex-direction: column; min-height: 200px;">
+          <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap;">
+            <label for="github-repo-selector" style="color:#ddd; font-size:13px; white-space:nowrap;">Repository:</label>
+            <select id="github-repo-selector" style="flex-grow: 1; padding:10px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; box-sizing: border-box; outline:none; min-width: 150px;">
+              <option value="" disabled selected>Select a repository...</option>
+            </select>
+            <button id="github-refresh-repos-btn" style="background:#555; color:#fff; border:none; padding:10px 15px; font-weight:bold; border-radius:4px; cursor:pointer;" title="Refresh Repositories">🔄</button>
+          </div>
+          <div id="github-file-browser-current-path" style="color: #9cdcfe; font-size: 14px; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px dashed #444;">/</div>
+          <div id="github-file-browser-content" style="flex: 1; overflow-y: auto;">
+            <p style="color:#888;">Select a repository to browse files.</p>
+          </div>
+          <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 15px; flex-shrink: 0;">
+            <button id="github-file-browser-back-btn" style="background:#444; color:#fff; border:none; padding:8px 15px; font-size:13px; border-radius:4px; cursor:pointer;" title="Go Back">Back</button>
+            <div>
+              <span id="github-selected-files-count" style="color:#888; font-size:12px; margin-right: 10px; display: none;">0 files selected</span>
+              <button id="github-pull-selected-btn" style="background:#4fc1ff; color:#1e1e1e; border:none; padding:8px 20px; font-weight:bold; border-radius:4px; cursor:pointer; opacity: 0.5; cursor: default;" disabled>Pull Selected Files</button>
+              <button id="github-push-btn" style="background:#2da042; color:#fff; border:none; padding:8px 20px; font-weight:bold; border-radius:4px; cursor:pointer;" title="Push current active file">☁️ Push Active File</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="github-file-browser-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-box" style="width: 700px; padding: 0; box-sizing: border-box; background: #1e1e1e; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding: 15px 25px; border-bottom: 1px solid #333;">
+          <h2 style="margin:0; color:#4fc1ff;">Browse Repository 📂</h2>
+          <div>
+            <button id="file-browser-back-btn" style="background:#444; color:#fff; border:none; padding:6px 12px; font-size:14px; border-radius:4px; cursor:pointer; margin-right: 10px;" title="Go Back">Back</button>
+            <button id="file-browser-close-btn" style="background:none; border:none; color:#888; font-size:20px; cursor:pointer; padding:0 5px;" title="Close">✕</button>
+          </div>
+        </div>
+        <div id="file-browser-content" style="padding: 15px 25px; min-height: 200px; max-height: 60vh; overflow-y: auto;">
+          <p style="color:#888;">Loading files...</p>
+        </div>
+      </div>
+    </div>
+    <div id="statusbar">
+      <span id="cursor-pos" style="flex: 1; font-size: 12px; color: #858585; font-variant-numeric: tabular-nums; padding-left: 5px;">Ln 1, Col 1</span>
+      <div id="shortcuts" style="display: flex; align-items: center;">
+        <button onclick="editor.openFile()" title="Open File (Ctrl+O)">📂 Open</button>
+        <button onclick="editor.saveFile()" title="Save File (Ctrl+S)">💾 Save</button>
+        <button onclick="editor.newFile()" style="margin-right: 10px;" title="New File (Ctrl+N)">📄 New</button>
+        <button onclick="editor.github.showSettingsModal()" title="Open GitHub Settings / File Browser (Alt+P for Direct Push of Active File/Tab to Repo. Use with caution...)" style="margin-right: 10px;">GitHub</button>
+        <strong>Cycle</strong>
+        <button onclick="editor.cycleNext('comment')" title="Jump to next comment">Comments</button>
+        <button onclick="editor.cycleNext('function')" title="Jump to next function definition" style="margin-right: 10px;">Functions</button>
+        <strong>Remove</strong>
+        <button onclick="editor.removeComments()" title="Remove Comments">Comments</button>
+        <button onclick="editor.removeEmptyLines()" title="Remove Empty Lines">Empty Lines</button>
+        <button onclick="editor.removeTrailingWhitespace()" title="Remove Trailing Whitespace" style="margin-right: 10px;">Whitespace</button>
+        <button onclick="editor.autoIndent()" style="margin-right: 10px;" title="Beautify Code">Beautify</button>
+      </div>
+      <span id="message-area" style="flex: 1; text-align: right; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">SingleScoop.net</span>
+    </div>
+    <script src="beautify-css.min.js" defer></script>
+    <script src="beautify-html.min.js" defer></script>
+    <script src="beautify.min.js" defer></script>
+    <script src="script.js" defer></script>
+  </body>
+</html>
