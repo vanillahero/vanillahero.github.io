@@ -11,7 +11,6 @@
       --text-color: #d4d4d4;
       --caret-color: #aeafad;
       --gutter-width: 24px;
-      /* Farger for Toast */
       --toast-bg-success: #2d2d2d;
       --toast-text-success: #fff;
       --toast-bg-error: #8b0000;
@@ -61,6 +60,11 @@
       overflow: auto;
     }
 
+    #editor.wrap {
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
     #editor::-webkit-scrollbar {
       width: 12px;
       height: 12px;
@@ -80,7 +84,6 @@
         background: var(--bg-color);
     }
 
-    /* --- TOAST STYLES --- */
     #toast {
       position: fixed;
       bottom: 20px;
@@ -89,7 +92,7 @@
       border-radius: 4px;
       font-size: 14px;
       opacity: 0;
-      pointer-events: none; /* Klikk går igjennom når usynlig */
+      pointer-events: none;
       transition: opacity 0.3s ease-in-out;
       z-index: 1000;
       box-shadow: 0 4px 6px rgba(0,0,0,0.3);
@@ -143,7 +146,6 @@
     };
 
     const showToast = (message, isError = false) => {
-      // Fjern gamle klasser og reset
       toast.className = ''; 
       clearTimeout(toastTimeout);
 
@@ -151,10 +153,15 @@
       toast.classList.add(isError ? 'error' : 'success');
       toast.classList.add('show');
 
-      // Skjul etter 2 sekunder
       toastTimeout = setTimeout(() => {
         toast.classList.remove('show');
       }, 2000);
+    };
+
+    const toggleWrap = () => {
+      editor.classList.toggle('wrap');
+      const isWrapped = editor.classList.contains('wrap');
+      showToast(`Line wrap: ${isWrapped ? 'ON' : 'OFF'}`, false);
     };
 
     const getFileContent = async (handle) => {
@@ -194,9 +201,7 @@
         fileName = fileHandle.name;
         updateTitle();
         editor.scrollLeft = 0;
-      } catch (err) {
-        // Avbrutt av bruker, ingen handling nødvendig
-      }
+      } catch (err) {}
     };
 
     const saveFile = async (saveAs = false) => {
@@ -219,13 +224,8 @@
         originalContent = editor.value;
         fileName = fileHandle.name;
         updateTitle();
-        
-        // Vis suksess-toast
         showToast('Saved ' + fileName, false);
-        
       } catch (err) {
-        // Hvis brukeren avbryter dialogen, kaster nettleseren en AbortError.
-        // Vi viser bare feilmelding hvis det faktisk gikk galt, ikke hvis brukeren avbrøt.
         if (err.name !== 'AbortError') {
             console.error(err);
             showToast('SAVING FAILED', true);
@@ -264,6 +264,10 @@
           case 'p':
             e.preventDefault();
             previewFile();
+            break;
+          case 'b':
+            e.preventDefault();
+            toggleWrap();
             break;
         }
       }
