@@ -2,8 +2,8 @@
 [Edit](https://vanillahero.github.io/edit.html) |
 [imagAI](https://vanillahero.github.io/imagai.html) |
 [imagUP](https://vanillahero.github.io/imageup.html) |
-[imagED](https://vanillahero.github.io/imaged.html) |
-[imagComp](https://vanillahero.github.io/imagecomp.html) |
+[imageED](https://vanillahero.github.io/imaged.html) |
+[imageComp](https://vanillahero.github.io/imagecomp.html) |
 [VideoPlayer](https://vanillahero.github.io/videoplayer.html)
 
 **Games:**
