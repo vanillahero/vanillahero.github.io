@@ -1,5 +1,6 @@
 **Tools:**
 [Edit](https://vanillahero.github.io/edit.html) |
+[imagAI](https://vanillahero.github.io/imagai.html) |
 [imagED](https://vanillahero.github.io/imaged.html)
 
 **Games:**
