@@ -2,5 +2,6 @@
 [Edit](https://vanillahero.github.io/edit.html)
 
 **Games:**
-[City Builder](https://vanillahero.github.io/citybuilder.html) |
+[Adventure](https://vanillahero.github.io/adventure.html) |
+[CityBuilder](https://vanillahero.github.io/citybuilder.html) |
 [Sokoban](https://vanillahero.github.io/sokoban.html)
