@@ -174,11 +174,12 @@
         padding: 5px;
         display: flex;
         justify-content: flex-end;
+        gap: 10px;
         border-bottom: 1px solid #333;
       }
 
-      .apply-btn {
-        background: #2d4f2d;
+      .action-btn {
+        background: #333;
         color: #fff;
         border: none;
         padding: 4px 10px;
@@ -186,6 +187,14 @@
         cursor: pointer;
         font-family: inherit;
         border-radius: 2px;
+      }
+
+      .action-btn:hover {
+        background: #444;
+      }
+
+      .apply-btn {
+        background: #2d4f2d;
       }
 
       .apply-btn:hover {
@@ -332,15 +341,18 @@
       let fileName = 'index.html';
       let toastTimeout;
       const SNAP_THRESHOLD = 5;
+
       editor.addEventListener('scroll', () => {
         if (editor.scrollLeft > 0 && editor.scrollLeft < SNAP_THRESHOLD) {
           editor.scrollLeft = 0;
         }
       });
+
       const updateTitle = () => {
         const isDirty = editor.value !== originalContent;
         document.title = (isDirty ? '*' : '') + fileName;
       };
+
       const showToast = (message, type = 'success', duration = 2000) => {
         toast.className = '';
         clearTimeout(toastTimeout);
@@ -351,18 +363,22 @@
           toast.classList.remove('show');
         }, duration);
       };
+
       const toggleWrap = () => {
         editor.classList.toggle('wrap');
         const isWrapped = editor.classList.contains('wrap');
         showToast(`Line wrap: ${isWrapped ? 'ON' : 'OFF'}`, 'success', 2000);
       };
+
       const toggleSidebar = () => {
         sidebar.classList.toggle('collapsed');
       };
+
       const getFileContent = async (handle) => {
         const file = await handle.getFile();
         return await file.text();
       };
+
       const newFile = async () => {
         if (editor.value !== originalContent) {
           if (!confirm('You have unsaved changes. Discard them?')) return;
@@ -374,6 +390,7 @@
         updateTitle();
         editor.focus();
       };
+
       const openFile = async () => {
         if (editor.value !== originalContent) {
           if (!confirm('You have unsaved changes. Discard them?')) return;
@@ -394,6 +411,7 @@
           updateTitle();
         } catch (err) {}
       };
+
       const saveFile = async (saveAs = false) => {
         try {
           if (!fileHandle || saveAs) {
@@ -421,6 +439,7 @@
           }
         }
       };
+
       const previewFile = () => {
         const win = window.open('', '_blank');
         if (win) {
@@ -429,10 +448,12 @@
           win.document.close();
         }
       };
+
       const showHelp = () => {
         const shortcuts = "Alt+O: Open | Alt+S: Save | Alt+N: New | Alt+P: Preview | Alt+B: Wrap | Alt+J: Toggle AI | Alt+H: Help";
         showToast(shortcuts, 'help', 10000);
       };
+
       class GeminiBrain {
         constructor() {
           this.apiKey = null;
@@ -441,16 +462,19 @@
           this.historyDiv = document.getElementById('chat-history');
           this.input = document.getElementById('chat-input');
           this.updateSelector("Setup Required ➡️");
+
           this.input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               this.sendUserMessage();
             }
           });
+
           document.getElementById('setup-btn').addEventListener('click', () => this.showSetupModal());
           this.setupResizeHandle();
           this.initData();
         }
+
         initData() {
           const storedKey = localStorage.getItem('gemini_key');
           if (storedKey && storedKey.trim().length > 5) {
@@ -461,13 +485,16 @@
             this.fetchModels();
           }
         }
+
         setupResizeHandle() {
           const inputArea = document.getElementById('chat-input-area');
           const handle = document.createElement('div');
           handle.id = 'resize-handle';
           handle.title = 'Drag to resize';
           inputArea.appendChild(handle);
+          
           let startY, startHeight;
+          
           const doDrag = (e) => {
             const delta = startY - e.clientY;
             const newHeight = startHeight + delta;
@@ -475,10 +502,12 @@
               this.input.style.height = `${newHeight}px`;
             }
           };
+
           const stopDrag = () => {
             document.documentElement.removeEventListener('mousemove', doDrag);
             document.documentElement.removeEventListener('mouseup', stopDrag);
           };
+
           handle.addEventListener('mousedown', (e) => {
             startY = e.clientY;
             startHeight = parseInt(window.getComputedStyle(this.input).height, 10);
@@ -487,21 +516,81 @@
             e.preventDefault();
           });
         }
+
         updateSelector(text, value = "") {
           const selector = document.getElementById('model-selector');
           if (selector) selector.innerHTML = `<option value="${value}" disabled selected>${text}</option>`;
         }
+
+        smartApplyCode(newCode) {
+          const cleanCode = newCode.trim();
+          if (!cleanCode) return;
+
+          // Strategy: Match the first line of the new code in the editor
+          const lines = cleanCode.split('\n');
+          const firstLine = lines[0].trim();
+          
+          // Escape regex special chars in the first line for searching
+          const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const searchRegex = new RegExp(`^\\s*${escapeRegExp(firstLine)}`, 'm');
+          
+          const match = editor.value.match(searchRegex);
+
+          if (match) {
+            // Found the start. Now we need to find the matching closing bracket to replace the block
+            const startIndex = match.index;
+            let openBrackets = 0;
+            let foundStart = false;
+            let endIndex = -1;
+            
+            // Simple bracket counter to find the end of the block in existing code
+            // This assumes valid syntax in the editor
+            for (let i = startIndex; i < editor.value.length; i++) {
+              const char = editor.value[i];
+              if (char === '{') {
+                openBrackets++;
+                foundStart = true;
+              } else if (char === '}') {
+                openBrackets--;
+                if (foundStart && openBrackets === 0) {
+                  endIndex = i + 1;
+                  break;
+                }
+              }
+            }
+
+            if (endIndex !== -1) {
+               // Perform replacement
+               editor.setRangeText(cleanCode, startIndex, endIndex, 'select');
+               updateTitle();
+               showToast('Smart Update Applied!', 'success');
+               return;
+            }
+          }
+
+          // Fallback if we can't auto-match
+          if (confirm('Could not auto-locate the exact block to replace. Replace CURRENT SELECTION instead?')) {
+             const start = editor.selectionStart;
+             const end = editor.selectionEnd;
+             editor.setRangeText(cleanCode, start, end, 'select');
+             updateTitle();
+          }
+        }
+
         appendMessage(role, text) {
           const msgDiv = document.createElement('div');
           msgDiv.className = `chat-msg chat-${role}`;
+
           if (role === 'ai') {
             const parts = text.split(/```(\w*)\n?([\s\S]*?)```/g);
+            
             if (parts.length === 1) {
               msgDiv.textContent = text;
             } else {
               for (let i = 0; i < parts.length; i++) {
                 const content = parts[i];
                 if (!content) continue;
+
                 if (i % 3 === 0) {
                   const textSpan = document.createElement('div');
                   textSpan.textContent = content;
@@ -509,20 +598,35 @@
                 } else if (i % 3 === 2) {
                   const wrapper = document.createElement('div');
                   wrapper.className = 'chat-code-block';
+                  
                   const header = document.createElement('div');
                   header.className = 'chat-code-header';
-                  const btn = document.createElement('button');
-                  btn.className = 'apply-btn';
-                  btn.innerHTML = 'Apply Full Update ⚡';
-                  btn.onclick = () => {
-                    if (confirm('Replace entire editor content with this code?')) {
-                      editor.value = content;
-                      updateTitle();
-                      showToast('Code Applied!', 'success');
-                    }
+                  
+                  const copyBtn = document.createElement('button');
+                  copyBtn.className = 'action-btn';
+                  copyBtn.textContent = 'Copy';
+                  copyBtn.onclick = () => {
+                    navigator.clipboard.writeText(content);
+                    showToast('Copied to clipboard');
                   };
-                  header.appendChild(btn);
+
+                  const applyBtn = document.createElement('button');
+                  applyBtn.className = 'action-btn apply-btn';
+                  applyBtn.innerHTML = 'Smart Apply ⚡';
+                  applyBtn.onclick = () => this.smartApplyCode(content);
+
+                  header.appendChild(copyBtn);
+                  header.appendChild(applyBtn);
                   wrapper.appendChild(header);
+                  
+                  const pre = document.createElement('pre');
+                  pre.style.margin = '0';
+                  pre.style.padding = '10px';
+                  pre.style.color = '#a9b7c6';
+                  pre.style.overflowX = 'auto';
+                  pre.textContent = content;
+                  wrapper.appendChild(pre);
+                  
                   msgDiv.appendChild(wrapper);
                 }
               }
@@ -530,62 +634,77 @@
           } else {
             msgDiv.textContent = 'You: ' + text;
           }
+          
           this.historyDiv.appendChild(msgDiv);
           this.historyDiv.scrollTop = this.historyDiv.scrollHeight;
         }
+
         async sendUserMessage() {
           const text = this.input.value.trim();
           if (!text) return;
+          
           if (!this.apiKey) {
             this.showSetupModal();
             return;
           }
+
           this.appendMessage('user', text);
           this.input.value = '';
+
           const loadingId = 'loading-' + Date.now();
           const loadingDiv = document.createElement('div');
           loadingDiv.id = loadingId;
           loadingDiv.className = 'chat-msg chat-ai';
           loadingDiv.textContent = 'Thinking...';
           this.historyDiv.appendChild(loadingDiv);
+
           try {
             const currentCode = editor.value;
-            const prompt = `PROJECT CONTEXT (Single File):\n\`\`\`\n${currentCode}\n\`\`\`\n\nUSER REQUEST: ${text}`;
+            // Optimizing the prompt for Partial Updates
+            const prompt = `CURRENT CODE:\n\`\`\`\n${currentCode}\n\`\`\`\n\nUSER REQUEST: ${text}`;
+            
             const payload = {
               contents: [{
                 role: 'user',
-                parts: [{
-                  text: prompt
-                }]
+                parts: [{ text: prompt }]
               }],
               system_instruction: {
                 parts: [{
-                  text: `SYSTEM: You are an expert coding assistant for a single-file web editor.
-                1. Always reply with the FULL, COMPLETE updated file code inside a code block if changes are needed. 
-                2. Do not use partial snippets. Return the entire file so it can be auto-replaced.
-                3. Keep conversational text brief.`
+                  text: `SYSTEM: You are an expert single-file web app developer. 
+                  RULES:
+                  1. When asked to edit code, identify the SPECIFIC function, class, or CSS block that needs changing.
+                  2. RETURN ONLY THE COMPLETE UPDATED BLOCK. DO NOT return the entire file unless explicitly asked to rewrite everything.
+                  3. If it is a new function/style, just return the new block.
+                  4. STRICT FORMATTING: No comments in code. 2-space indentation. Empty line before functions/classes.
+                  5. All output (code and text) must be in English.
+                  6. Ensure function names and signatures match exactly so they can be found programmatically.`
                 }]
               }
             };
+
             const selector = document.getElementById('model-selector');
             const modelName = selector.value || 'gemini-1.5-flash';
+
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${this.apiKey}`, {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload)
             });
+
             if (!response.ok) throw new Error('API Error');
+
             const data = await response.json();
             const aiText = data.candidates[0].content.parts[0].text;
+            
             document.getElementById(loadingId).remove();
             this.appendMessage('ai', aiText);
+            
           } catch (e) {
             console.error(e);
             document.getElementById(loadingId).textContent = 'Error: ' + e.message;
           }
         }
+
         async fetchModels() {
           const selector = document.getElementById('model-selector');
           try {
@@ -594,6 +713,7 @@
             const models = data.models
               .filter(m => m.supportedGenerationMethods.includes("generateContent") && m.name.includes("gemini"))
               .map(m => m.name.replace('models/', ''));
+            
             selector.innerHTML = '';
             models.forEach(m => {
               const opt = document.createElement('option');
@@ -601,18 +721,22 @@
               opt.text = m;
               selector.appendChild(opt);
             });
+            
             if (this.savedModel) selector.value = this.savedModel;
+            
             selector.onchange = () => {
               localStorage.setItem('gemini_model', selector.value);
               this.savedModel = selector.value;
             };
           } catch (e) {
-            this.updateSelector("Error loading models");
+             this.updateSelector("Error loading models");
           }
         }
+
         showSetupModal() {
           const existing = document.getElementById('ai-modal');
           if (existing) existing.remove();
+          
           const modal = document.createElement('div');
           modal.id = 'ai-modal';
           modal.className = 'modal-overlay';
@@ -625,8 +749,10 @@
             <button id="ai-cancel" style="background:none; border:none; color:#888; cursor:pointer;">Cancel</button>
           </div>
         `;
+          
           document.body.appendChild(modal);
           document.getElementById('ai-cancel').onclick = () => modal.remove();
+          
           document.getElementById('ai-save').onclick = () => {
             const key = document.getElementById('ai-key-input').value.trim();
             if (key) {
@@ -639,41 +765,23 @@
           };
         }
       }
+
       const gemini = new GeminiBrain();
+
       window.addEventListener('keydown', async (e) => {
         if (e.altKey) {
           switch (e.key.toLowerCase()) {
-            case 'o':
-              e.preventDefault();
-              await openFile();
-              break;
-            case 's':
-              e.preventDefault();
-              await saveFile(e.shiftKey);
-              break;
-            case 'n':
-              e.preventDefault();
-              await newFile();
-              break;
-            case 'p':
-              e.preventDefault();
-              previewFile();
-              break;
-            case 'b':
-              e.preventDefault();
-              toggleWrap();
-              break;
-            case 'h':
-              e.preventDefault();
-              showHelp();
-              break;
-            case 'j':
-              e.preventDefault();
-              toggleSidebar();
-              break;
+            case 'o': e.preventDefault(); await openFile(); break;
+            case 's': e.preventDefault(); await saveFile(e.shiftKey); break;
+            case 'n': e.preventDefault(); await newFile(); break;
+            case 'p': e.preventDefault(); previewFile(); break;
+            case 'b': e.preventDefault(); toggleWrap(); break;
+            case 'j': e.preventDefault(); toggleSidebar(); break;
+            case 'h': e.preventDefault(); showHelp(); break;
           }
         }
       });
+
       editor.addEventListener('input', updateTitle);
       window.addEventListener('beforeunload', (e) => {
         if (editor.value !== originalContent) {
@@ -681,6 +789,7 @@
           e.returnValue = '';
         }
       });
+
       const regainFocus = () => setTimeout(() => editor.focus(), 10);
       window.addEventListener('focus', regainFocus);
       gutter.addEventListener('click', toggleSidebar);
